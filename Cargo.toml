@@ -35,7 +35,7 @@ serde_json = "1.0"
 serde_json_path = "0.7"
 serde_yml = "0.0.12"
 thiserror = "2"
-txt2data = { path = "../txt2data", default-features = false }
+txt2data = { version = "0.6", default-features = false }
 wasm-bindgen = { version = "0.2", optional = true }
 
 [dev-dependencies]

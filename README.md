@@ -1,6 +1,13 @@
 # scheck
 
+[![CI](https://github.com/rh-jfuller/scheck/actions/workflows/ci.yml/badge.svg)](https://github.com/rh-jfuller/scheck/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Semantic validation of structured data using assertion-based rules.
+
+[Try it in your browser](https://rh-jfuller.github.io/scheck/) -- no install needed.
+
+![scheck in the browser](docs/ss-wasm.png)
 
 ## The problem
 

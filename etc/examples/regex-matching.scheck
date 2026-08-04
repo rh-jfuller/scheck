@@ -1,0 +1,8 @@
+schema "format checks" {
+  pattern "identifiers" {
+    rule context="$" {
+      assert matches("$.cve", "^CVE-\\d{4}-\\d{4,}$")
+        message="CVE ID must match standard format";
+    }
+  }
+}

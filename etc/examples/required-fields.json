@@ -1,0 +1,25 @@
+{
+  "title": "required fields",
+  "patterns": [
+    {
+      "name": "basics",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.name" },
+              "message": "name is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.email" },
+              "message": "email is required"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

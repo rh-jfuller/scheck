@@ -1,0 +1,13 @@
+schema "with diagnostics" {
+  diagnostics {
+    diagnostic "spec-4.2" "See CSAF 2.0 spec, section 4.2";
+  }
+
+  pattern "spec-compliance" {
+    rule context="$" {
+      assert exists("$.document")
+        message="document root required"
+        diagnostic="spec-4.2";
+    }
+  }
+}

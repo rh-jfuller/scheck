@@ -1,0 +1,50 @@
+schema "CSAF Advisory Checks" {
+  description "Validates CSAF 2.0 advisory documents";
+
+  default_phase "quick";
+
+  phase "quick" {
+    active "required-fields";
+  }
+
+  phase "full" {
+    active "required-fields";
+    active "cve-format";
+    active "status-consistency";
+  }
+
+  diagnostics {
+    diagnostic "csaf-4.2" "See CSAF 2.0 spec, section 4.2";
+  }
+
+  pattern "required-fields" {
+    title "Core fields must be present";
+    rule context="$" {
+      assert exists("$.document")
+        message="document root is required"
+        severity=fatal
+        diagnostic="csaf-4.2";
+      assert exists("$.document.title")
+        message="document must have a title";
+      assert exists("$.document.tracking.id")
+        message="tracking ID is required";
+    }
+  }
+
+  pattern "cve-format" {
+    title "CVE identifiers must be well-formed";
+    rule context="$..vulnerabilities[*]" {
+      assert matches("$.cve", "^CVE-\\d{4}-\\d{4,}$")
+        message="CVE ID must match standard format";
+    }
+  }
+
+  pattern "status-consistency" {
+    title "Status and dates must be consistent";
+    rule context="$.document" {
+      report equals("$.tracking.status", "final")
+        message="document is marked final"
+        severity=info;
+    }
+  }
+}

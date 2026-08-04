@@ -1,0 +1,26 @@
+schema "phased checks" {
+  default_phase "quick";
+
+  phase "quick" {
+    active "required";
+  }
+
+  phase "full" {
+    active "required";
+    active "format";
+  }
+
+  pattern "required" {
+    rule context="$" {
+      assert exists("$.id")
+        message="id required";
+    }
+  }
+
+  pattern "format" {
+    rule context="$" {
+      assert matches("$.id", "^[A-Z]")
+        message="id must start uppercase";
+    }
+  }
+}

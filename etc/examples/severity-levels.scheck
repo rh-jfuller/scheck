@@ -1,0 +1,20 @@
+schema "severity demo" {
+  pattern "checks" {
+    rule context="$" {
+      assert exists("$.id")
+        message="id is required"
+        severity=fatal;
+
+      assert exists("$.name")
+        message="name is required";
+
+      assert exists("$.description")
+        message="description is recommended"
+        severity=warning;
+
+      assert exists("$.metadata")
+        message="metadata is optional"
+        severity=info;
+    }
+  }
+}

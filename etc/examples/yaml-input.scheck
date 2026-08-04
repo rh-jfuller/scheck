@@ -1,0 +1,10 @@
+schema "config checks" {
+  pattern "required" {
+    rule context="$" {
+      assert exists("$.name")
+        message="name is required";
+      assert exists("$.version")
+        message="version is required";
+    }
+  }
+}

@@ -627,3 +627,570 @@ fn mixed_assert_and_report() {
     assert_eq!(findings[0].kind, ResultKind::SuccessfulReport);
     assert_eq!(findings[0].message, "has metadata");
 }
+
+// -- Empty and minimal inputs ----------------------------------------
+
+#[test]
+fn empty_json_object() {
+    let rules = r#"
+        schema "t" {
+            pattern "p" {
+                rule context="$" {
+                    assert exists("$.x")
+                        message="x required";
+                }
+            }
+        }
+    "#;
+    let report = check(rules, r"{}").unwrap();
+    assert!(!report.is_ok());
+    assert_eq!(report.error_count(), 1);
+}
+
+#[test]
+fn empty_json_array_as_root() {
+    let rules = r#"
+        schema "t" {
+            pattern "p" {
+                rule context="$" {
+                    assert count("$[*]", >=, 1)
+                        message="array must not be empty";
+                }
+            }
+        }
+    "#;
+    assert!(!check_ok(rules, "[]").unwrap());
+    assert!(check_ok(rules, r"[1]").unwrap());
+}
+
+#[test]
+fn null_values() {
+    let rules = r#"
+        schema "t" {
+            pattern "p" {
+                rule context="$" {
+                    assert exists("$.name")
+                        message="name required";
+                }
+            }
+        }
+    "#;
+    assert!(check_ok(rules, r#"{"name": null}"#).unwrap());
+}
+
+#[test]
+fn boolean_value_equals() {
+    let rules = r#"
+        schema "t" {
+            pattern "p" {
+                rule context="$" {
+                    assert equals("$.active", "true")
+                        message="must be active";
+                }
+            }
+        }
+    "#;
+    assert!(check_ok(rules, r#"{"active": true}"#).unwrap());
+    assert!(!check_ok(rules, r#"{"active": false}"#).unwrap());
+}
+
+#[test]
+fn numeric_value_equals() {
+    let rules = r#"
+        schema "t" {
+            pattern "p" {
+                rule context="$" {
+                    assert equals("$.count", "42")
+                        message="must be 42";
+                }
+            }
+        }
+    "#;
+    assert!(check_ok(rules, r#"{"count": 42}"#).unwrap());
+    assert!(!check_ok(rules, r#"{"count": 0}"#).unwrap());
+}
+
+// -- Count operator coverage -----------------------------------------
+
+#[test]
+fn count_eq() {
+    let rules = r#"
+        schema "t" {
+            pattern "p" {
+                rule context="$" {
+                    assert count("$.items[*]", ==, 2)
+                        message="need exactly 2";
+                }
+            }
+        }
+    "#;
+    assert!(check_ok(rules, r#"{"items": [1, 2]}"#).unwrap());
+    assert!(!check_ok(rules, r#"{"items": [1]}"#).unwrap());
+    assert!(!check_ok(rules, r#"{"items": [1, 2, 3]}"#).unwrap());
+}
+
+#[test]
+fn count_ne() {
+    let rules = r#"
+        schema "t" {
+            pattern "p" {
+                rule context="$" {
+                    assert count("$.items[*]", !=, 0)
+                        message="must not be empty";
+                }
+            }
+        }
+    "#;
+    assert!(check_ok(rules, r#"{"items": [1]}"#).unwrap());
+    assert!(!check_ok(rules, r#"{"items": []}"#).unwrap());
+}
+
+#[test]
+fn count_lt() {
+    let rules = r#"
+        schema "t" {
+            pattern "p" {
+                rule context="$" {
+                    assert count("$.items[*]", <, 3)
+                        message="must have fewer than 3";
+                }
+            }
+        }
+    "#;
+    assert!(check_ok(rules, r#"{"items": [1, 2]}"#).unwrap());
+    assert!(!check_ok(rules, r#"{"items": [1, 2, 3]}"#).unwrap());
+}
+
+#[test]
+fn count_le() {
+    let rules = r#"
+        schema "t" {
+            pattern "p" {
+                rule context="$" {
+                    assert count("$.items[*]", <=, 2)
+                        message="must have at most 2";
+                }
+            }
+        }
+    "#;
+    assert!(check_ok(rules, r#"{"items": [1, 2]}"#).unwrap());
+    assert!(!check_ok(rules, r#"{"items": [1, 2, 3]}"#).unwrap());
+}
+
+#[test]
+fn count_gt() {
+    let rules = r#"
+        schema "t" {
+            pattern "p" {
+                rule context="$" {
+                    assert count("$.items[*]", >, 0)
+                        message="must have more than 0";
+                }
+            }
+        }
+    "#;
+    assert!(check_ok(rules, r#"{"items": [1]}"#).unwrap());
+    assert!(!check_ok(rules, r#"{"items": []}"#).unwrap());
+}
+
+// -- Context matching ------------------------------------------------
+
+#[test]
+fn context_no_match_skips_rule() {
+    let rules = r#"
+        schema "t" {
+            pattern "p" {
+                rule context="$.nonexistent[*]" {
+                    assert exists("$.x")
+                        message="x required";
+                }
+            }
+        }
+    "#;
+    let report = check(rules, r#"{"y": 1}"#).unwrap();
+    assert!(report.is_ok());
+    assert!(report.findings().is_empty());
+}
+
+#[test]
+fn multiple_context_matches() {
+    let rules = r#"
+        schema "t" {
+            pattern "p" {
+                rule context="$.users[*]" {
+                    assert exists("$.email")
+                        message="user needs email";
+                }
+            }
+        }
+    "#;
+    let doc = r#"{"users": [{"email": "a@b"}, {"name": "no email"}]}"#;
+    let report = check(rules, doc).unwrap();
+    assert_eq!(report.error_count(), 1);
+}
+
+// -- Nested logical combinators --------------------------------------
+
+#[test]
+fn nested_and_or() {
+    // DSL precedence: `and` binds tighter than `or` in the grammar,
+    // but the parser produces `a and (b or c)` for chained expressions.
+    // Use explicit grouping for clarity.
+    let rules = r#"
+        schema "t" {
+            pattern "p" {
+                rule context="$" {
+                    assert exists("$.a") or exists("$.b") and exists("$.c")
+                        message="need a, or (b and c)";
+                }
+            }
+        }
+    "#;
+    assert!(check_ok(rules, r#"{"a": 1}"#).unwrap());
+    assert!(check_ok(rules, r#"{"b": 1, "c": 2}"#).unwrap());
+    assert!(!check_ok(rules, r#"{"b": 1}"#).unwrap());
+}
+
+// -- Report output ---------------------------------------------------
+
+#[test]
+fn text_output_with_diagnostics() {
+    let rules = r#"
+        schema "t" {
+            diagnostics {
+                diagnostic "d1" "See specification";
+            }
+            pattern "p" {
+                rule context="$" {
+                    assert exists("$.x")
+                        message="x missing"
+                        diagnostic="d1";
+                }
+            }
+        }
+    "#;
+    let report = check(rules, r"{}").unwrap();
+    let text = report.to_text();
+    assert!(text.contains("x missing"));
+    assert!(text.contains("See specification"));
+}
+
+#[test]
+fn json_output_with_flag() {
+    let rules = r#"
+        schema "t" {
+            pattern "p" {
+                rule context="$" {
+                    assert exists("$.x")
+                        message="x missing"
+                        flag="critical";
+                }
+            }
+        }
+    "#;
+    let report = check(rules, r"{}").unwrap();
+    let json = report.to_json();
+    assert!(json.contains("\"flag\": \"critical\""));
+}
+
+#[test]
+fn json_output_escaping() {
+    let rules = r#"
+        schema "test \"escapes\"" {
+            pattern "p" {
+                rule context="$" {
+                    assert exists("$.x")
+                        message="needs \"x\" field";
+                }
+            }
+        }
+    "#;
+    let report = check(rules, r"{}").unwrap();
+    let json = report.to_json();
+    assert!(json.contains("\\\""));
+}
+
+// -- Security: regex limits ------------------------------------------
+
+#[test]
+fn invalid_regex_fails_gracefully() {
+    let rules = r#"
+        schema "t" {
+            pattern "p" {
+                rule context="$" {
+                    assert matches("$.x", "[invalid")
+                        message="bad regex";
+                }
+            }
+        }
+    "#;
+    let report = check(rules, r#"{"x": "test"}"#).unwrap();
+    assert!(!report.is_ok());
+}
+
+#[test]
+fn oversized_regex_returns_false() {
+    let long_pattern = format!("^{}$", "a".repeat(2000));
+    let rules = format!(
+        r#"schema "t" {{
+            pattern "p" {{
+                rule context="$" {{
+                    assert matches("$.x", "{long_pattern}")
+                        message="oversized regex";
+                }}
+            }}
+        }}"#
+    );
+    let report = check(&rules, r#"{"x": "a"}"#).unwrap();
+    assert!(!report.is_ok());
+}
+
+// -- JSON rules roundtrip --------------------------------------------
+
+#[test]
+fn json_rules_validation() {
+    let rules_json = r#"{
+        "title": "json test",
+        "patterns": [{
+            "name": "p",
+            "rules": [{
+                "context": "$",
+                "checks": [{
+                    "kind": "assert",
+                    "test": {"type": "exists", "path": "$.name"},
+                    "message": "name required"
+                }]
+            }]
+        }]
+    }"#;
+    let report = scheck::check_json(rules_json, r#"{"name": "ok"}"#).unwrap();
+    assert!(report.is_ok());
+
+    let report = scheck::check_json(rules_json, r"{}").unwrap();
+    assert!(!report.is_ok());
+}
+
+#[test]
+fn json_rules_with_all_predicates() {
+    let rules_json = r#"{
+        "title": "predicates",
+        "patterns": [{
+            "name": "p",
+            "rules": [{
+                "context": "$",
+                "checks": [
+                    {
+                        "kind": "assert",
+                        "test": {"type": "not_exists", "path": "$.bad"},
+                        "message": "no bad field"
+                    },
+                    {
+                        "kind": "assert",
+                        "test": {"type": "equals", "path": "$.status", "value": "ok"},
+                        "message": "status ok"
+                    },
+                    {
+                        "kind": "assert",
+                        "test": {"type": "matches", "path": "$.id", "pattern": "^[A-Z]+$"},
+                        "message": "id uppercase"
+                    },
+                    {
+                        "kind": "assert",
+                        "test": {"type": "count", "path": "$.items[*]", "cmp": ">=", "expected": 1},
+                        "message": "has items"
+                    }
+                ]
+            }]
+        }]
+    }"#;
+    let doc = r#"{"status": "ok", "id": "ABC", "items": [1]}"#;
+    let report = scheck::check_json(rules_json, doc).unwrap();
+    assert!(report.is_ok());
+}
+
+// -- Schematron XML rules --------------------------------------------
+
+#[test]
+fn schematron_xml_end_to_end() {
+    let xml = r#"
+<schema xmlns="http://purl.oclc.org/dsdl/schematron">
+  <title>XML test</title>
+  <pattern id="p">
+    <rule context="$">
+      <assert test="exists('$.name')">name required</assert>
+    </rule>
+  </pattern>
+</schema>
+"#;
+    let report = scheck::check_schematron(xml, r#"{"name": "ok"}"#).unwrap();
+    assert!(report.is_ok());
+
+    let report = scheck::check_schematron(xml, r"{}").unwrap();
+    assert!(!report.is_ok());
+}
+
+// -- Free-text rules -------------------------------------------------
+
+#[test]
+fn freetext_end_to_end() {
+    let rules = r#"Every document must have a "name" field.
+The "status" field must equal "active"."#;
+    let report = scheck::check_freetext(rules, r#"{"name": "x", "status": "active"}"#).unwrap();
+    assert!(report.is_ok());
+
+    let report = scheck::check_freetext(rules, r"{}").unwrap();
+    assert!(!report.is_ok());
+}
+
+// -- Builder API integration -----------------------------------------
+
+#[test]
+fn builder_api_end_to_end() {
+    use scheck::Severity;
+    use scheck::builder::*;
+
+    let schema = schema("builder test")
+        .pattern("p", |p| {
+            p.rule("$", |r| {
+                r.assert(exists("$.name"), "name required")
+                    .assert_with(
+                        matches("$.id", "^[A-Z]"),
+                        "id must start uppercase",
+                        Severity::Warning,
+                    )
+                    .report(exists("$.metadata"), "has metadata")
+            })
+        })
+        .build();
+
+    let report = scheck::validate_json(&schema, r#"{"name": "A", "id": "XYZ"}"#).unwrap();
+    assert!(report.is_ok());
+
+    let report = scheck::validate_json(&schema, r#"{"id": "abc"}"#).unwrap();
+    assert!(!report.is_ok());
+}
+
+#[test]
+fn builder_schema_round_trips_through_json() {
+    use scheck::builder::*;
+
+    let schema = schema("roundtrip")
+        .pattern("p", |p| {
+            p.rule("$", |r| {
+                r.assert(exists("$.x"), "need x")
+                    .assert(equals("$.y", "ok"), "y must be ok")
+            })
+        })
+        .build();
+
+    let json = serde_json::to_string(&schema).unwrap();
+    let report = scheck::check_json(&json, r#"{"x": 1, "y": "ok"}"#).unwrap();
+    assert!(report.is_ok());
+}
+
+// -- Edge cases: special characters ----------------------------------
+
+#[test]
+fn message_with_special_chars() {
+    let rules = r#"
+        schema "t" {
+            pattern "p" {
+                rule context="$" {
+                    assert exists("$.x")
+                        message="field \"x\" is required (see docs)";
+                }
+            }
+        }
+    "#;
+    let report = check(rules, r"{}").unwrap();
+    let text = report.to_text();
+    assert!(text.contains("field \"x\" is required"));
+}
+
+#[test]
+fn unicode_field_names() {
+    let rules = r#"
+        schema "t" {
+            pattern "p" {
+                rule context="$" {
+                    assert exists("$.nombre")
+                        message="nombre required";
+                }
+            }
+        }
+    "#;
+    assert!(check_ok(rules, r#"{"nombre": "Juan"}"#).unwrap());
+    assert!(!check_ok(rules, r#"{"name": "John"}"#).unwrap());
+}
+
+// -- Report counts ---------------------------------------------------
+
+#[test]
+fn report_counts_are_accurate() {
+    let rules = r#"
+        schema "t" {
+            pattern "p" {
+                rule context="$" {
+                    assert exists("$.a")
+                        message="a" severity=fatal;
+                    assert exists("$.b")
+                        message="b" severity=error;
+                    assert exists("$.c")
+                        message="c" severity=warning;
+                    assert exists("$.d")
+                        message="d" severity=info;
+                }
+            }
+        }
+    "#;
+    let report = check(rules, r"{}").unwrap();
+    assert_eq!(report.fatal_count(), 1);
+    assert_eq!(report.error_count(), 1);
+    assert_eq!(report.warning_count(), 1);
+    assert_eq!(report.info_count(), 1);
+    assert!(!report.is_ok());
+    assert_eq!(report.findings().len(), 4);
+    assert_eq!(report.failures().len(), 4);
+    assert!(report.reports().is_empty());
+}
+
+#[test]
+fn info_only_failures_still_pass() {
+    let rules = r#"
+        schema "t" {
+            pattern "p" {
+                rule context="$" {
+                    assert exists("$.optional")
+                        message="optional missing"
+                        severity=info;
+                }
+            }
+        }
+    "#;
+    let report = check(rules, r"{}").unwrap();
+    assert!(report.is_ok());
+    assert_eq!(report.info_count(), 1);
+}
+
+// -- Multiple rules in same pattern ----------------------------------
+
+#[test]
+fn multiple_rules_different_contexts() {
+    let rules = r#"
+        schema "t" {
+            pattern "p" {
+                rule context="$" {
+                    assert exists("$.items")
+                        message="items required";
+                }
+                rule context="$.items[*]" {
+                    assert exists("$.id")
+                        message="item id required";
+                }
+            }
+        }
+    "#;
+    let doc = r#"{"items": [{"id": 1}, {"name": "no id"}]}"#;
+    let report = check(rules, doc).unwrap();
+    assert_eq!(report.error_count(), 1);
+}

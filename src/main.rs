@@ -2,6 +2,19 @@
 use clap::Parser as ClapParser;
 use std::process::ExitCode;
 
+/// Default maximum input file size (10 MiB).
+/// Override with `SCHECK_MAX_FILE_SIZE` (in bytes).
+#[cfg(feature = "cli")]
+const DEFAULT_MAX_FILE_SIZE: u64 = 10 * 1024 * 1024;
+
+#[cfg(feature = "cli")]
+fn max_file_size() -> u64 {
+    std::env::var("SCHECK_MAX_FILE_SIZE")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(DEFAULT_MAX_FILE_SIZE)
+}
+
 #[cfg(feature = "cli")]
 #[derive(ClapParser)]
 #[command(
@@ -138,6 +151,20 @@ fn load_schema(rules_src: &str, fmt: &str) -> Result<scheck::Schema, String> {
 }
 
 #[cfg(feature = "cli")]
+fn read_file_bounded(path: &str) -> Result<String, String> {
+    let limit = max_file_size();
+    let meta = std::fs::metadata(path).map_err(|e| format!("cannot stat {path}: {e}"))?;
+    if meta.len() > limit {
+        return Err(format!(
+            "{path}: file too large ({} bytes, max {limit}; \
+             override with SCHECK_MAX_FILE_SIZE)",
+            meta.len(),
+        ));
+    }
+    std::fs::read_to_string(path).map_err(|e| format!("cannot read {path}: {e}"))
+}
+
+#[cfg(feature = "cli")]
 fn run_validate(
     doc_path: &str,
     rules_path: &str,
@@ -145,10 +172,8 @@ fn run_validate(
     phase: Option<&str>,
     format: &str,
 ) -> Result<String, String> {
-    let rules_src =
-        std::fs::read_to_string(rules_path).map_err(|e| format!("cannot read rules: {e}"))?;
-    let doc_src =
-        std::fs::read_to_string(doc_path).map_err(|e| format!("cannot read document: {e}"))?;
+    let rules_src = read_file_bounded(rules_path)?;
+    let doc_src = read_file_bounded(doc_path)?;
 
     let fmt = detect_format(rules_path, rule_format);
     let schema = load_schema(&rules_src, fmt)?;
@@ -165,8 +190,7 @@ fn run_validate(
 
 #[cfg(feature = "cli")]
 fn run_check(rules_path: &str, rule_format: Option<&str>) -> Result<String, String> {
-    let rules_src =
-        std::fs::read_to_string(rules_path).map_err(|e| format!("cannot read rules: {e}"))?;
+    let rules_src = read_file_bounded(rules_path)?;
 
     let fmt = detect_format(rules_path, rule_format);
     let schema = load_schema(&rules_src, fmt)?;

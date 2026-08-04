@@ -18,6 +18,12 @@ use crate::document::Document;
 use crate::report::{CheckResult, FiredRule, Report, ResultKind};
 use crate::rule::{Check, CheckKind, Predicate, Schema};
 
+/// Maximum regex pattern length to prevent regex denial-of-service.
+const MAX_REGEX_LEN: usize = 1024;
+
+/// Maximum predicate nesting depth to prevent stack overflow.
+const MAX_PREDICATE_DEPTH: usize = 32;
+
 /// Validate a document against a schema using the default phase.
 #[must_use]
 pub fn validate(schema: &Schema, doc: &Document) -> Report {
@@ -155,6 +161,18 @@ fn eval_check(
 }
 
 fn eval_predicate(pred: &Predicate, node: &Value, bindings: &HashMap<String, bool>) -> bool {
+    eval_predicate_bounded(pred, node, bindings, 0)
+}
+
+fn eval_predicate_bounded(
+    pred: &Predicate,
+    node: &Value,
+    bindings: &HashMap<String, bool>,
+    depth: usize,
+) -> bool {
+    if depth >= MAX_PREDICATE_DEPTH {
+        return false;
+    }
     match pred {
         Predicate::Exists { path } => !query_path_ref(path, node).is_empty(),
         Predicate::NotExists { path } => query_path_ref(path, node).is_empty(),
@@ -162,13 +180,18 @@ fn eval_predicate(pred: &Predicate, node: &Value, bindings: &HashMap<String, boo
             let nodes = query_path_ref(path, node);
             nodes.iter().any(|n| value_as_string(n) == *value)
         }
-        Predicate::Matches { path, pattern } => match Regex::new(pattern) {
-            Ok(re) => {
-                let nodes = query_path_ref(path, node);
-                nodes.iter().any(|n| re.is_match(&value_as_string(n)))
+        Predicate::Matches { path, pattern } => {
+            if pattern.len() > MAX_REGEX_LEN {
+                return false;
             }
-            Err(_) => false,
-        },
+            match Regex::new(pattern) {
+                Ok(re) => {
+                    let nodes = query_path_ref(path, node);
+                    nodes.iter().any(|n| re.is_match(&value_as_string(n)))
+                }
+                Err(_) => false,
+            }
+        }
         Predicate::Count {
             path,
             cmp,
@@ -179,12 +202,14 @@ fn eval_predicate(pred: &Predicate, node: &Value, bindings: &HashMap<String, boo
         }
         Predicate::Var { name } => bindings.get(name.as_str()).copied().unwrap_or(false),
         Predicate::And { left, right } => {
-            eval_predicate(left, node, bindings) && eval_predicate(right, node, bindings)
+            eval_predicate_bounded(left, node, bindings, depth + 1)
+                && eval_predicate_bounded(right, node, bindings, depth + 1)
         }
         Predicate::Or { left, right } => {
-            eval_predicate(left, node, bindings) || eval_predicate(right, node, bindings)
+            eval_predicate_bounded(left, node, bindings, depth + 1)
+                || eval_predicate_bounded(right, node, bindings, depth + 1)
         }
-        Predicate::Not { inner } => !eval_predicate(inner, node, bindings),
+        Predicate::Not { inner } => !eval_predicate_bounded(inner, node, bindings, depth + 1),
     }
 }
 

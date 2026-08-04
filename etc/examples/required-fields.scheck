@@ -1,0 +1,10 @@
+schema "required fields" {
+  pattern "basics" {
+    rule context="$" {
+      assert exists("$.name")
+        message="name is required";
+      assert exists("$.email")
+        message="email is required";
+    }
+  }
+}

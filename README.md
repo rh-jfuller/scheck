@@ -9,6 +9,8 @@ Semantic validation of structured data using assertion-based rules.
 
 ![scheck in the browser](docs/ss-wasm.png)
 
+See the [examples](docs/examples.md) for a full walkthrough of every feature.
+
 ## The problem
 
 Schema validation only brings you so far.
@@ -259,6 +261,12 @@ cargo install scheck
 scheck validate <document> --rules <rules> [--phase <name>] [--format text|json]
 scheck check <rules>   # validate rule file syntax
 ```
+
+### Environment variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SCHECK_MAX_FILE_SIZE` | `10485760` (10 MiB) | Maximum input file size in bytes for both rule files and documents |
 
 ## As a library
 

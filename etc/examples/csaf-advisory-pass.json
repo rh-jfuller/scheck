@@ -1,0 +1,12 @@
+{
+  "document": {
+    "title": "Example Advisory",
+    "tracking": {
+      "id": "CSAF-2024-001",
+      "status": "final"
+    }
+  },
+  "vulnerabilities": [
+    {"cve": "CVE-2024-12345"}
+  ]
+}

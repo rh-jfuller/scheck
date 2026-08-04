@@ -1,0 +1,10 @@
+schema "item checks" {
+  pattern "items" {
+    rule context="$.items[*]" {
+      assert exists("$.name")
+        message="every item must have a name";
+      assert exists("$.price")
+        message="every item must have a price";
+    }
+  }
+}

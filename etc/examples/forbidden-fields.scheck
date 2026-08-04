@@ -1,0 +1,12 @@
+schema "no secrets" {
+  pattern "security" {
+    rule context="$" {
+      assert not_exists("$.password")
+        message="must not contain password"
+        flag="security";
+      assert not_exists("$.secret")
+        message="must not contain secret"
+        flag="security";
+    }
+  }
+}

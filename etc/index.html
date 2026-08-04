@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>scheck</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 72rem;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      color: #1a1a1a;
+      background: #fafafa;
+    }
+    h1 { margin-bottom: 0.25rem; }
+    p.subtitle { color: #555; margin-bottom: 1.5rem; }
+    a { color: #2563eb; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    .label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 0.25rem;
+    }
+    label { font-weight: 600; }
+    textarea {
+      width: 100%;
+      font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+      font-size: 0.8rem;
+      padding: 0.75rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      resize: vertical;
+      background: #fff;
+      tab-size: 2;
+    }
+    textarea:focus {
+      outline: 2px solid #2563eb;
+      border-color: transparent;
+    }
+    .controls {
+      margin: 1rem 0;
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+    }
+    button {
+      padding: 0.5rem 1.25rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background: #2563eb;
+      color: #fff;
+    }
+    button:hover { background: #1d4ed8; }
+    select {
+      padding: 0.4rem 0.5rem;
+      font-size: 0.875rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+    }
+    .tab-bar {
+      display: flex;
+      gap: 0;
+      margin-bottom: -1px;
+    }
+    .tab {
+      padding: 0.4rem 1rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid #ccc;
+      border-bottom: none;
+      border-radius: 4px 4px 0 0;
+      background: #eee;
+      color: #555;
+    }
+    .tab.active {
+      background: #fff;
+      color: #1a1a1a;
+      border-bottom: 1px solid #fff;
+    }
+    #output {
+      min-height: 10rem;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      border-color: #333;
+    }
+    #error {
+      color: #dc2626;
+      margin-top: 0.5rem;
+      font-size: 0.875rem;
+      white-space: pre-wrap;
+    }
+    .example-hint {
+      font-size: 0.8rem;
+      color: #666;
+    }
+    footer {
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid #ddd;
+      font-size: 0.8rem;
+      color: #888;
+    }
+    details {
+      margin-top: 2rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: #fff;
+    }
+    summary {
+      padding: 0.75rem 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+    }
+    summary:hover { background: #f5f5f5; }
+    .doc-body {
+      padding: 0 1rem 1rem;
+      font-size: 0.875rem;
+      line-height: 1.6;
+    }
+    .doc-body h3 {
+      font-size: 0.9rem;
+      margin: 1rem 0 0.25rem;
+    }
+    .doc-body pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 0.75rem;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+      font-size: 0.8rem;
+      line-height: 1.5;
+    }
+    .doc-body code {
+      font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+      background: #eee;
+      padding: 0.1rem 0.3rem;
+      border-radius: 3px;
+      font-size: 0.8rem;
+    }
+    .doc-body pre code { background: none; padding: 0; }
+    .doc-body p { margin: 0.5rem 0; }
+    .doc-body table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.5rem 0;
+      font-size: 0.8rem;
+    }
+    .doc-body th, .doc-body td {
+      text-align: left;
+      padding: 0.35rem 0.75rem;
+      border-bottom: 1px solid #eee;
+    }
+    .doc-body th { font-weight: 600; background: #f9f9f9; }
+  </style>
+</head>
+<body>
+  <h1>scheck</h1>
+  <p class="subtitle">
+    Semantic validation of structured data.
+    Define rules in JSON, DSL, Schematron XML, or plain English.
+    Paths use <a href="https://www.rfc-editor.org/rfc/rfc9535">JSONPath (RFC 9535)</a>.
+    Inspired by <a href="https://en.wikipedia.org/wiki/Schematron">ISO Schematron</a>.
+  </p>
+
+  <div class="grid">
+    <div>
+      <div class="label-row">
+        <label>Rules</label>
+        <span class="example-hint">
+          Example:
+          <select id="example">
+            <option value="basic">Basic fields</option>
+            <option value="cve">CVE format</option>
+            <option value="api-response">API response</option>
+            <option value="package-json">package.json</option>
+            <option value="github-action">GitHub Action</option>
+            <option value="k8s-pod">K8s pod spec</option>
+            <option value="sbom">SBOM checks</option>
+            <option value="phases">Phases</option>
+            <option value="assert-report">Assert vs Report</option>
+            <option value="schematron-xml">Schematron XML</option>
+            <option value="freetext-rules">Free-text rules</option>
+          </select>
+        </span>
+      </div>
+      <div class="tab-bar">
+        <div class="tab active" data-tab="json" id="tab-json">JSON</div>
+        <div class="tab" data-tab="dsl" id="tab-dsl">DSL</div>
+        <div class="tab" data-tab="schematron" id="tab-schematron">Schematron</div>
+        <div class="tab" data-tab="freetext" id="tab-freetext">Free-text</div>
+      </div>
+      <textarea id="rules-json" rows="16"></textarea>
+      <textarea id="rules-dsl" rows="16" style="display:none"></textarea>
+      <textarea id="rules-schematron" rows="16" style="display:none"></textarea>
+      <textarea id="rules-freetext" rows="16" style="display:none"></textarea>
+    </div>
+    <div>
+      <div class="label-row">
+        <label for="document">Document</label>
+      </div>
+      <textarea id="document" rows="18"></textarea>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="validate">Validate</button>
+    <select id="format">
+      <option value="json" selected>JSON report</option>
+      <option value="text">Text report</option>
+    </select>
+  </div>
+  <div id="error"></div>
+
+  <label for="output">Output</label>
+  <textarea id="output" rows="14" readonly></textarea>
+
+  <details>
+    <summary>CLI Usage</summary>
+    <div class="doc-body">
+      <h3>Install</h3>
+<pre><code>cargo install scheck</code></pre>
+
+      <h3>Validate</h3>
+<pre><code># With JSON rules
+scheck validate doc.json --rules checks.json
+
+# With DSL rules
+scheck validate doc.json --rules checks.scheck
+
+# Select phase and output format
+scheck validate doc.json --rules checks.json --phase full --format json</code></pre>
+
+      <h3>Check rule syntax</h3>
+<pre><code>scheck check rules.scheck</code></pre>
+    </div>
+  </details>
+
+  <details>
+    <summary>Rust Library Usage</summary>
+    <div class="doc-body">
+      <h3>Builder API</h3>
+<pre><code>use scheck::builder::*;
+use scheck::{Severity, validate_json};
+
+let schema = schema("example")
+    .pattern("p", |p| p
+        .rule("$", |r| r
+            .assert(exists("$.name"), "name required")
+            .assert_with(
+                matches("$.email", r"^.+@.+\..+$"),
+                "email format invalid",
+                Severity::Warning,
+            )
+        )
+    )
+    .build();
+
+let report = validate_json(&schema, json_str)?;</code></pre>
+
+      <h3>JSON rules</h3>
+<pre><code>let report = scheck::check_json(rules_json, doc_json)?;</code></pre>
+
+      <h3>DSL rules</h3>
+<pre><code>let report = scheck::check(rules_dsl, doc_json)?;</code></pre>
+    </div>
+  </details>
+
+  <footer>
+    <a href="https://github.com/rh-jfuller/scheck">Source on GitHub</a>
+  </footer>
+
+  <script type="module">
+    import init, * as wasm from "./pkg/scheck.js";
+
+    const examples = {
+      basic: {
+        json: {
+          title: "Basic field checks",
+          patterns: [{
+            name: "required",
+            title: "Required fields",
+            rules: [{
+              context: "$",
+              checks: [
+                { kind: "assert", test: { type: "exists", path: "$.name" }, message: "name is required" },
+                { kind: "assert", test: { type: "exists", path: "$.email" }, message: "email is required" },
+                { kind: "assert", test: { type: "matches", path: "$.email", pattern: "^.+@.+\\..+$" }, message: "email must be valid", severity: "warning" }
+              ]
+            }]
+          }]
+        },
+        dsl: `schema "Basic field checks" {
+  pattern "required" {
+    title "Required fields";
+    rule context="$" {
+      assert exists("$.name")
+        message="name is required";
+      assert exists("$.email")
+        message="email is required";
+      assert matches("$.email", "^.+@.+\\\\..+$")
+        message="email must be valid"
+        severity=warning;
+    }
+  }
+}`,
+        schematron: `<schema xmlns="http://purl.oclc.org/dsdl/schematron">
+  <title>Basic field checks</title>
+  <pattern id="required">
+    <title>Required fields</title>
+    <rule context="$">
+      <assert test="exists('$.name')">name is required</assert>
+      <assert test="exists('$.email')">email is required</assert>
+      <assert test="matches('$.email', '^.+@.+\\..+$')" severity="warning">email must be valid</assert>
+    </rule>
+  </pattern>
+</schema>`,
+        freetext: `Every document must have a "name" field.
+Every document must have a "email" field.
+The "email" field must match "^.+@.+\\..+$".`,
+        doc: { name: "Alice", email: "alice@example.com", age: 30 }
+      },
+      cve: {
+        json: {
+          title: "CVE format validation",
+          patterns: [{
+            name: "cve-format",
+            title: "CVE ID format",
+            rules: [{
+              context: "$",
+              checks: [
+                { kind: "assert", test: { type: "exists", path: "$.cve" }, message: "CVE ID is required" },
+                { kind: "assert", test: { type: "matches", path: "$.cve", pattern: "^CVE-\\d{4}-\\d{4,}$" }, message: "CVE ID must match CVE-YYYY-NNNNN+ format" },
+                { kind: "report", test: { type: "exists", path: "$.cvss" }, message: "CVSS score is present", severity: "info" }
+              ]
+            }]
+          }]
+        },
+        dsl: `schema "CVE format validation" {
+  pattern "cve-format" {
+    rule context="$" {
+      assert exists("$.cve")
+        message="CVE ID is required";
+      assert matches("$.cve", "^CVE-\\\\d{4}-\\\\d{4,}$")
+        message="CVE ID must match CVE-YYYY-NNNNN+ format";
+      report exists("$.cvss")
+        message="CVSS score is present"
+        severity=info;
+    }
+  }
+}`,
+        schematron: `<schema xmlns="http://purl.oclc.org/dsdl/schematron">
+  <title>CVE format validation</title>
+  <pattern id="cve-format">
+    <title>CVE ID format</title>
+    <rule context="$">
+      <assert test="exists('$.cve')">CVE ID is required</assert>
+      <assert test="matches('$.cve', '^CVE-\\d{4}-\\d{4,}$')">CVE ID must match CVE-YYYY-NNNNN+ format</assert>
+      <report test="exists('$.cvss')" severity="info">CVSS score is present</report>
+    </rule>
+  </pattern>
+</schema>`,
+        freetext: `Every document must have a "cve" field.
+The "cve" field must match "^CVE-\\d{4}-\\d{4,}$".
+The "cvss" field must not exist.`,
+        doc: { cve: "CVE-2024-12345", title: "Buffer overflow", cvss: 7.5 }
+      },
+      "api-response": {
+        json: {
+          title: "API response validation",
+          patterns: [{
+            name: "structure",
+            rules: [{
+              context: "$",
+              checks: [
+                { kind: "assert", test: { type: "exists", path: "$.status" }, message: "response must have status" },
+                { kind: "assert", test: { type: "equals", path: "$.status", value: "ok" }, message: "status must be 'ok'" },
+                { kind: "assert", test: { type: "exists", path: "$.data" }, message: "response must have data" },
+                { kind: "assert", test: { type: "not_exists", path: "$.error" }, message: "successful response must not have error field" }
+              ]
+            }]
+          }]
+        },
+        dsl: `schema "API response validation" {
+  pattern "structure" {
+    rule context="$" {
+      assert exists("$.status")
+        message="response must have status";
+      assert equals("$.status", "ok")
+        message="status must be 'ok'";
+      assert exists("$.data")
+        message="response must have data";
+      assert not_exists("$.error")
+        message="successful response must not have error field";
+    }
+  }
+}`,
+        schematron: `<schema xmlns="http://purl.oclc.org/dsdl/schematron">
+  <title>API response validation</title>
+  <pattern id="structure">
+    <rule context="$">
+      <assert test="exists('$.status')">response must have status</assert>
+      <assert test="equals('$.status', 'ok')">status must be 'ok'</assert>
+      <assert test="exists('$.data')">response must have data</assert>
+      <assert test="not_exists('$.error')">successful response must not have error field</assert>
+    </rule>
+  </pattern>
+</schema>`,
+        freetext: `Every document must have a "status" field.
+The "status" field must equal "ok".
+Every document must have a "data" field.
+The "error" field must not exist.`,
+        doc: { status: "ok", data: { users: [{ id: 1, name: "Alice" }] }, meta: { page: 1 } }
+      },
+      "package-json": {
+        json: {
+          title: "package.json checks",
+          patterns: [{
+            name: "required",
+            title: "NPM package requirements",
+            rules: [{
+              context: "$",
+              checks: [
+                { kind: "assert", test: { type: "exists", path: "$.name" }, message: "package must have a name" },
+                { kind: "assert", test: { type: "exists", path: "$.version" }, message: "package must have a version" },
+                { kind: "assert", test: { type: "matches", path: "$.version", pattern: "^\\d+\\.\\d+\\.\\d+" }, message: "version must be semver", severity: "warning" },
+                { kind: "assert", test: { type: "exists", path: "$.license" }, message: "package should have a license", severity: "warning" },
+                { kind: "assert", test: { type: "not_exists", path: "$.password" }, message: "must not contain password field", severity: "fatal" }
+              ]
+            }]
+          }]
+        },
+        dsl: `schema "package.json checks" {
+  pattern "required" {
+    title "NPM package requirements";
+    rule context="$" {
+      assert exists("$.name")
+        message="package must have a name";
+      assert exists("$.version")
+        message="package must have a version";
+      assert matches("$.version", "^\\\\d+\\\\.\\\\d+\\\\.\\\\d+")
+        message="version must be semver"
+        severity=warning;
+      assert exists("$.license")
+        message="package should have a license"
+        severity=warning;
+      assert not_exists("$.password")
+        message="must not contain password field"
+        severity=fatal;
+    }
+  }
+}`,
+        schematron: `<schema xmlns="http://purl.oclc.org/dsdl/schematron">
+  <title>package.json checks</title>
+  <pattern id="required">
+    <title>NPM package requirements</title>
+    <rule context="$">
+      <assert test="exists('$.name')">package must have a name</assert>
+      <assert test="exists('$.version')">package must have a version</assert>
+      <assert test="matches('$.version', '^\\d+\\.\\d+\\.\\d+')" severity="warning">version must be semver</assert>
+      <assert test="exists('$.license')" severity="warning">package should have a license</assert>
+      <assert test="not_exists('$.password')" severity="fatal">must not contain password field</assert>
+    </rule>
+  </pattern>
+</schema>`,
+        freetext: `Every document must have a "name" field.
+Every document must have a "version" field.
+The "version" field must match "^\\d+\\.\\d+\\.\\d+".
+Every document must have a "license" field.
+The "password" field must not exist.`,
+        doc: { name: "my-app", version: "1.2.3", license: "MIT", main: "index.js" }
+      },
+      "github-action": {
+        json: {
+          title: "GitHub Action workflow checks",
+          patterns: [{
+            name: "security",
+            title: "Action security",
+            rules: [{
+              context: "$",
+              checks: [
+                { kind: "assert", test: { type: "exists", path: "$.name" }, message: "workflow must have a name" },
+                { kind: "assert", test: { type: "exists", path: "$.on" }, message: "workflow must define triggers" },
+                { kind: "assert", test: { type: "exists", path: "$.jobs" }, message: "workflow must have jobs" },
+                { kind: "assert", test: { type: "not_exists", path: "$.env.GITHUB_TOKEN" }, message: "avoid exposing GITHUB_TOKEN in top-level env", severity: "warning" }
+              ]
+            }]
+          }]
+        },
+        dsl: `schema "GitHub Action workflow checks" {
+  pattern "security" {
+    title "Action security";
+    rule context="$" {
+      assert exists("$.name")
+        message="workflow must have a name";
+      assert exists("$.on")
+        message="workflow must define triggers";
+      assert exists("$.jobs")
+        message="workflow must have jobs";
+      assert not_exists("$.env.GITHUB_TOKEN")
+        message="avoid exposing GITHUB_TOKEN in top-level env"
+        severity=warning;
+    }
+  }
+}`,
+        schematron: `<schema xmlns="http://purl.oclc.org/dsdl/schematron">
+  <title>GitHub Action workflow checks</title>
+  <pattern id="security">
+    <title>Action security</title>
+    <rule context="$">
+      <assert test="exists('$.name')">workflow must have a name</assert>
+      <assert test="exists('$.on')">workflow must define triggers</assert>
+      <assert test="exists('$.jobs')">workflow must have jobs</assert>
+      <assert test="not_exists('$.env.GITHUB_TOKEN')" severity="warning">avoid exposing GITHUB_TOKEN in top-level env</assert>
+    </rule>
+  </pattern>
+</schema>`,
+        freetext: `Every document must have a "name" field.
+Every document must have a "on" field.
+Every document must have a "jobs" field.
+The "env.GITHUB_TOKEN" field must not exist.`,
+        doc: { name: "CI", on: { push: { branches: ["main"] } }, jobs: { build: { "runs-on": "ubuntu-latest", steps: [{ uses: "actions/checkout@v4" }] } } }
+      },
+      "k8s-pod": {
+        json: {
+          title: "Kubernetes pod spec checks",
+          patterns: [{
+            name: "best-practices",
+            rules: [{
+              context: "$",
+              checks: [
+                { kind: "assert", test: { type: "exists", path: "$.apiVersion" }, message: "must have apiVersion" },
+                { kind: "assert", test: { type: "exists", path: "$.kind" }, message: "must have kind" },
+                { kind: "assert", test: { type: "equals", path: "$.kind", value: "Pod" }, message: "kind must be Pod" },
+                { kind: "assert", test: { type: "exists", path: "$.metadata.name" }, message: "pod must have a name" },
+                { kind: "assert", test: { type: "not_exists", path: "$..securityContext.privileged" }, message: "containers should not run privileged", severity: "warning" }
+              ]
+            }]
+          }]
+        },
+        dsl: `schema "Kubernetes pod spec checks" {
+  pattern "best-practices" {
+    rule context="$" {
+      assert exists("$.apiVersion")
+        message="must have apiVersion";
+      assert exists("$.kind")
+        message="must have kind";
+      assert equals("$.kind", "Pod")
+        message="kind must be Pod";
+      assert exists("$.metadata.name")
+        message="pod must have a name";
+      assert not_exists("$..securityContext.privileged")
+        message="containers should not run privileged"
+        severity=warning;
+    }
+  }
+}`,
+        schematron: `<schema xmlns="http://purl.oclc.org/dsdl/schematron">
+  <title>Kubernetes pod spec checks</title>
+  <pattern id="best-practices">
+    <rule context="$">
+      <assert test="exists('$.apiVersion')">must have apiVersion</assert>
+      <assert test="exists('$.kind')">must have kind</assert>
+      <assert test="equals('$.kind', 'Pod')">kind must be Pod</assert>
+      <assert test="exists('$.metadata.name')">pod must have a name</assert>
+      <assert test="not_exists('$..securityContext.privileged')" severity="warning">containers should not run privileged</assert>
+    </rule>
+  </pattern>
+</schema>`,
+        freetext: `Every document must have a "apiVersion" field.
+Every document must have a "kind" field.
+The "kind" field must equal "Pod".
+Every document must have a "metadata.name" field.
+The "securityContext.privileged" field must not exist.`,
+        doc: { apiVersion: "v1", kind: "Pod", metadata: { name: "nginx" }, spec: { containers: [{ name: "nginx", image: "nginx:1.25" }] } }
+      },
+      sbom: {
+        json: {
+          title: "SBOM completeness",
+          patterns: [{
+            name: "required",
+            rules: [{
+              context: "$",
+              checks: [
+                { kind: "assert", test: { type: "exists", path: "$.bomFormat" }, message: "must declare BOM format" },
+                { kind: "assert", test: { type: "exists", path: "$.specVersion" }, message: "must have spec version" },
+                { kind: "assert", test: { type: "exists", path: "$.components" }, message: "must have components" },
+                { kind: "assert", test: { type: "count", path: "$.components[*]", cmp: ">=", expected: 1 }, message: "must have at least one component" }
+              ]
+            }]
+          }]
+        },
+        dsl: `schema "SBOM completeness" {
+  pattern "required" {
+    rule context="$" {
+      assert exists("$.bomFormat")
+        message="must declare BOM format";
+      assert exists("$.specVersion")
+        message="must have spec version";
+      assert exists("$.components")
+        message="must have components";
+      assert count("$.components[*]", >=, 1)
+        message="must have at least one component";
+    }
+  }
+}`,
+        schematron: `<schema xmlns="http://purl.oclc.org/dsdl/schematron">
+  <title>SBOM completeness</title>
+  <pattern id="required">
+    <rule context="$">
+      <assert test="exists('$.bomFormat')">must declare BOM format</assert>
+      <assert test="exists('$.specVersion')">must have spec version</assert>
+      <assert test="exists('$.components')">must have components</assert>
+      <assert test="count('$.components[*]', '&gt;=', 1)">must have at least one component</assert>
+    </rule>
+  </pattern>
+</schema>`,
+        freetext: `Every document must have a "bomFormat" field.
+Every document must have a "specVersion" field.
+Every document must have a "components" field.
+The "components" array must have at least 1 element.`,
+        doc: { bomFormat: "CycloneDX", specVersion: "1.5", components: [{ type: "library", name: "lodash", version: "4.17.21" }] }
+      },
+      phases: {
+        json: {
+          title: "Phased validation",
+          default_phase: "quick",
+          phases: [
+            { name: "quick", active_patterns: ["required"] },
+            { name: "full", active_patterns: ["required", "format"] }
+          ],
+          patterns: [
+            { name: "required", rules: [{ context: "$", checks: [
+              { kind: "assert", test: { type: "exists", path: "$.id" }, message: "id is required" },
+              { kind: "assert", test: { type: "exists", path: "$.name" }, message: "name is required" }
+            ]}]},
+            { name: "format", rules: [{ context: "$", checks: [
+              { kind: "assert", test: { type: "matches", path: "$.id", pattern: "^[A-Z]{3}-\\d+$" }, message: "id must match XXX-NNN format" },
+              { kind: "assert", test: { type: "matches", path: "$.email", pattern: "^.+@.+$" }, message: "email must be valid", severity: "warning" }
+            ]}]}
+          ]
+        },
+        dsl: `schema "Phased validation" {
+  default_phase "quick";
+  phase "quick" {
+    active "required";
+  }
+  phase "full" {
+    active "required";
+    active "format";
+  }
+  pattern "required" {
+    rule context="$" {
+      assert exists("$.id") message="id is required";
+      assert exists("$.name") message="name is required";
+    }
+  }
+  pattern "format" {
+    rule context="$" {
+      assert matches("$.id", "^[A-Z]{3}-\\\\d+$")
+        message="id must match XXX-NNN format";
+      assert matches("$.email", "^.+@.+$")
+        message="email must be valid"
+        severity=warning;
+    }
+  }
+}`,
+        schematron: `<!-- Phases are not directly supported in Schematron XML format -->
+<schema xmlns="http://purl.oclc.org/dsdl/schematron">
+  <title>Phased validation</title>
+  <pattern id="required">
+    <rule context="$">
+      <assert test="exists('$.id')">id is required</assert>
+      <assert test="exists('$.name')">name is required</assert>
+    </rule>
+  </pattern>
+  <pattern id="format">
+    <rule context="$">
+      <assert test="matches('$.id', '^[A-Z]{3}-\\d+$')">id must match XXX-NNN format</assert>
+      <assert test="matches('$.email', '^.+@.+$')" severity="warning">email must be valid</assert>
+    </rule>
+  </pattern>
+</schema>`,
+        freetext: `Every document must have a "id" field.
+Every document must have a "name" field.
+The "id" field must match "^[A-Z]{3}-\\d+$".
+The "email" field must match "^.+@.+$".`,
+        doc: { id: "ABC-123", name: "Test", email: "test@example.com" }
+      },
+      "assert-report": {
+        json: {
+          title: "Assert vs Report demo",
+          patterns: [{
+            name: "checks",
+            rules: [{
+              context: "$",
+              checks: [
+                { kind: "assert", test: { type: "exists", path: "$.id" }, message: "id is required (assert: fires on FAILURE)" },
+                { kind: "report", test: { type: "exists", path: "$.deprecated" }, message: "deprecated field found (report: fires on SUCCESS)", severity: "warning" },
+                { kind: "report", test: { type: "exists", path: "$.metadata" }, message: "has metadata (report: fires on SUCCESS)", severity: "info" }
+              ]
+            }]
+          }]
+        },
+        dsl: `schema "Assert vs Report demo" {
+  pattern "checks" {
+    rule context="$" {
+      assert exists("$.id")
+        message="id is required (assert: fires on FAILURE)";
+      report exists("$.deprecated")
+        message="deprecated field found (report: fires on SUCCESS)"
+        severity=warning;
+      report exists("$.metadata")
+        message="has metadata (report: fires on SUCCESS)"
+        severity=info;
+    }
+  }
+}`,
+        schematron: `<!-- Assert vs Report: assert fires on failure, report fires on success -->
+<schema xmlns="http://purl.oclc.org/dsdl/schematron">
+  <title>Assert vs Report demo</title>
+  <pattern id="checks">
+    <rule context="$">
+      <assert test="exists('$.id')">id is required (assert: fires on FAILURE)</assert>
+      <report test="exists('$.deprecated')" severity="warning">deprecated field found (report: fires on SUCCESS)</report>
+      <report test="exists('$.metadata')" severity="info">has metadata (report: fires on SUCCESS)</report>
+    </rule>
+  </pattern>
+</schema>`,
+        freetext: `Every document must have a "id" field.
+The "deprecated" field must not exist.
+The "metadata" field must not exist.`,
+        doc: { id: "123", deprecated: true, metadata: { version: 2 } }
+      },
+      "schematron-xml": {
+        json: {
+          title: "Schematron XML checks",
+          patterns: [{
+            name: "required",
+            rules: [{
+              context: "$",
+              checks: [
+                { kind: "assert", test: { type: "exists", path: "$.name" }, message: "name is required" },
+                { kind: "assert", test: { type: "matches", path: "$.email", pattern: "^.+@.+\\..+$" }, message: "email must be valid", severity: "warning" },
+                { kind: "report", test: { type: "exists", path: "$.role" }, message: "role is specified", severity: "info" }
+              ]
+            }]
+          }]
+        },
+        dsl: `schema "Schematron XML checks" {\n  pattern "required" {\n    rule context="$" {\n      assert exists("$.name")\n        message="name is required";\n      assert matches("$.email", "^.+@.+\\\\.+$")\n        message="email must be valid"\n        severity=warning;\n      report exists("$.role")\n        message="role is specified"\n        severity=info;\n    }\n  }\n}`,
+        schematron: `<schema xmlns="http://purl.oclc.org/dsdl/schematron">
+  <title>Schematron XML checks</title>
+  <pattern id="required">
+    <rule context="$">
+      <assert test="exists('$.name')">name is required</assert>
+      <assert test="matches('$.email', '^.+@.+\\..+$')" severity="warning">email must be valid</assert>
+      <report test="exists('$.role')" severity="info">role is specified</report>
+    </rule>
+  </pattern>
+</schema>`,
+        freetext: `Every document must have a "name" field.\nThe "email" field must match "^.+@.+\\..+$".\nThe "role" field must not exist.`,
+        doc: { name: "Alice", email: "alice@example.com", role: "admin" }
+      },
+      "freetext-rules": {
+        json: {
+          title: "Free-text rules",
+          patterns: [{
+            name: "rules",
+            rules: [{
+              context: "$",
+              checks: [
+                { kind: "assert", test: { type: "exists", path: "$.name" }, message: "must have name" },
+                { kind: "assert", test: { type: "exists", path: "$.version" }, message: "must have version" },
+                { kind: "assert", test: { type: "matches", path: "$.version", pattern: "^\\d+\\.\\d+\\.\\d+$" }, message: "version must match semver" },
+                { kind: "assert", test: { type: "equals", path: "$.license", value: "MIT" }, message: "license must be MIT" }
+              ]
+            }]
+          }]
+        },
+        dsl: `schema "Free-text rules" {\n  pattern "rules" {\n    rule context="$" {\n      assert exists("$.name")\n        message="must have name";\n      assert exists("$.version")\n        message="must have version";\n      assert matches("$.version", "^\\\\d+\\\\.\\\\d+\\\\.\\\\d+$")\n        message="version must match semver";\n      assert equals("$.license", "MIT")\n        message="license must be MIT";\n    }\n  }\n}`,
+        schematron: `<schema xmlns="http://purl.oclc.org/dsdl/schematron">
+  <title>Free-text rules</title>
+  <pattern id="rules">
+    <rule context="$">
+      <assert test="exists('$.name')">must have name</assert>
+      <assert test="exists('$.version')">must have version</assert>
+      <assert test="matches('$.version', '^\\d+\\.\\d+\\.\\d+$')">version must match semver</assert>
+      <assert test="equals('$.license', 'MIT')">license must be MIT</assert>
+    </rule>
+  </pattern>
+</schema>`,
+        freetext: `Every document must have a "name" field.
+Every document must have a "version" field.
+The "version" field must match "^\\d+\\.\\d+\\.\\d+$".
+The "license" field must equal "MIT".`,
+        doc: { name: "my-app", version: "1.2.3", license: "MIT", main: "index.js" }
+      }
+    };
+
+    const rulesJsonEl = document.getElementById("rules-json");
+    const rulesDslEl = document.getElementById("rules-dsl");
+    const rulesSchematronEl = document.getElementById("rules-schematron");
+    const rulesFreetextEl = document.getElementById("rules-freetext");
+    const documentEl = document.getElementById("document");
+    const errorEl = document.getElementById("error");
+    const outputEl = document.getElementById("output");
+    const exampleEl = document.getElementById("example");
+    const tabJson = document.getElementById("tab-json");
+    const tabDsl = document.getElementById("tab-dsl");
+    const tabSchematron = document.getElementById("tab-schematron");
+    const tabFreetext = document.getElementById("tab-freetext");
+
+    const allTabs = [tabJson, tabDsl, tabSchematron, tabFreetext];
+    const allTextareas = [rulesJsonEl, rulesDslEl, rulesSchematronEl, rulesFreetextEl];
+    const tabNames = ["json", "dsl", "schematron", "freetext"];
+
+    let activeTab = "json";
+
+    function switchTab(name) {
+      activeTab = name;
+      tabNames.forEach((t, i) => {
+        allTabs[i].classList.toggle("active", t === name);
+        allTextareas[i].style.display = t === name ? "" : "none";
+      });
+    }
+
+    allTabs.forEach((tab, i) => {
+      tab.addEventListener("click", () => switchTab(tabNames[i]));
+    });
+
+    function loadExample(name) {
+      const ex = examples[name];
+      rulesJsonEl.value = JSON.stringify(ex.json, null, 2);
+      rulesDslEl.value = ex.dsl;
+      rulesSchematronEl.value = ex.schematron || "";
+      rulesFreetextEl.value = ex.freetext || "";
+      documentEl.value = JSON.stringify(ex.doc, null, 2);
+      errorEl.textContent = "";
+      outputEl.value = "";
+    }
+
+    exampleEl.addEventListener("change", () => loadExample(exampleEl.value));
+    loadExample("basic");
+
+    await init();
+
+    document.getElementById("validate").addEventListener("click", () => {
+      const rules = allTextareas[tabNames.indexOf(activeTab)].value;
+      const doc = documentEl.value;
+      const fmt = document.getElementById("format").value;
+
+      errorEl.textContent = "";
+      outputEl.value = "";
+
+      try {
+        let result;
+        if (activeTab === "json") {
+          result = fmt === "json"
+            ? wasm.wasm_check_json(rules, doc)
+            : wasm.wasm_check_json_text(rules, doc);
+        } else if (activeTab === "dsl") {
+          result = fmt === "json"
+            ? wasm.wasm_check(rules, doc)
+            : wasm.wasm_check_text(rules, doc);
+        } else if (activeTab === "schematron") {
+          result = fmt === "json"
+            ? wasm.wasm_check_schematron(rules, doc)
+            : wasm.wasm_check_schematron_text(rules, doc);
+        } else if (activeTab === "freetext") {
+          result = fmt === "json"
+            ? wasm.wasm_check_freetext(rules, doc)
+            : wasm.wasm_check_freetext_text(rules, doc);
+        }
+        outputEl.value = result;
+      } catch (e) {
+        errorEl.textContent = String(e);
+      }
+    });
+  </script>
+</body>
+</html>

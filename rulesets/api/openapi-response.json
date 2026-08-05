@@ -1,0 +1,79 @@
+{
+  "title": "OpenAPI Response Contract",
+  "description": "Validates that API JSON responses conform to common REST contract conventions. Checks error envelope structure, pagination, and resource identification.",
+  "patterns": [
+    {
+      "name": "error-envelope",
+      "title": "Error responses must use a consistent envelope",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.error" },
+                "right": {
+                  "type": "and",
+                  "left": { "type": "exists", "path": "$.error.code" },
+                  "right": { "type": "exists", "path": "$.error.message" }
+                }
+              },
+              "message": "error envelope must have code and message"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "pagination",
+      "title": "Paginated responses must include navigation metadata",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.data" },
+                "right": {
+                  "type": "or",
+                  "left": { "type": "not_exists", "path": "$.pagination" },
+                  "right": {
+                    "type": "and",
+                    "left": { "type": "exists", "path": "$.pagination.page" },
+                    "right": { "type": "exists", "path": "$.pagination.total" }
+                  }
+                }
+              },
+              "message": "pagination object must include page and total if present",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "resource-id",
+      "title": "Resources must have an identifier",
+      "rules": [
+        {
+          "context": "$.data[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "exists", "path": "$.id" },
+                "right": { "type": "exists", "path": "$.uuid" }
+              },
+              "message": "resource must have id or uuid"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

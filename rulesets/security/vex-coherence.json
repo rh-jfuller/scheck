@@ -1,0 +1,246 @@
+{
+  "title": "VEX Status Coherence",
+  "description": "Checks that VEX (Vulnerability Exploitability eXchange) status fields are coherent. Applicable to CSAF VEX documents and OpenVEX. When status is not_affected, a justification is required. When status is affected, an action_statement is expected.",
+  "default_phase": "structural",
+  "phases": [
+    {
+      "name": "structural",
+      "active_patterns": [
+        "vex-document-required",
+        "vex-statement-required"
+      ]
+    },
+    {
+      "name": "full",
+      "active_patterns": [
+        "vex-document-required",
+        "vex-statement-required",
+        "csaf-vex-status",
+        "openvex-status"
+      ]
+    }
+  ],
+  "patterns": [
+    {
+      "name": "vex-document-required",
+      "title": "VEX document structure",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "exists", "path": "$.vulnerabilities" },
+                "right": { "type": "exists", "path": "$.statements" }
+              },
+              "message": "VEX document must contain vulnerabilities or statements",
+              "severity": "fatal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "vex-statement-required",
+      "title": "VEX statement required fields",
+      "rules": [
+        {
+          "context": "$..statements[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.vulnerability" },
+              "message": "statement must reference a vulnerability"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.status" },
+              "message": "statement must have a status"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.status",
+                "pattern": "^(not_affected|affected|fixed|under_investigation)$"
+              },
+              "message": "status must be not_affected, affected, fixed, or under_investigation"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "exists", "path": "$.products" },
+                "right": { "type": "exists", "path": "$.product" }
+              },
+              "message": "statement must identify affected products",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "csaf-vex-status",
+      "title": "CSAF VEX status coherence",
+      "rules": [
+        {
+          "context": "$..vulnerabilities[*]..product_status",
+          "checks": [
+            {
+              "kind": "report",
+              "test": { "type": "exists", "path": "$.known_not_affected" },
+              "message": "vulnerability has known_not_affected products",
+              "severity": "info"
+            },
+            {
+              "kind": "report",
+              "test": { "type": "exists", "path": "$.known_affected" },
+              "message": "vulnerability has known_affected products",
+              "severity": "info"
+            },
+            {
+              "kind": "report",
+              "test": { "type": "exists", "path": "$.fixed" },
+              "message": "vulnerability has fixed products",
+              "severity": "info"
+            },
+            {
+              "kind": "report",
+              "test": { "type": "exists", "path": "$.under_investigation" },
+              "message": "vulnerability has products under investigation",
+              "severity": "info"
+            }
+          ]
+        },
+        {
+          "context": "$..vulnerabilities[*]..threats[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.category" },
+              "message": "threat must have category"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.details" },
+              "message": "threat must have details"
+            }
+          ]
+        },
+        {
+          "context": "$..vulnerabilities[*]..remediations[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.category" },
+              "message": "remediation must have category"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.details" },
+              "message": "remediation must have details"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.category",
+                "pattern": "^(mitigation|no_fix_planned|none_available|vendor_fix|workaround)$"
+              },
+              "message": "remediation.category must be a valid CSAF remediation category"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "openvex-status",
+      "title": "OpenVEX status coherence",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.statements" },
+                "right": {
+                  "type": "count",
+                  "path": "$.statements[*]",
+                  "cmp": ">=",
+                  "expected": 1
+                }
+              },
+              "message": "statements array must not be empty if present"
+            }
+          ]
+        },
+        {
+          "context": "$..statements[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "not",
+                  "inner": {
+                    "type": "equals",
+                    "path": "$.status",
+                    "value": "not_affected"
+                  }
+                },
+                "right": { "type": "exists", "path": "$.justification" }
+              },
+              "message": "not_affected status requires justification"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "not",
+                  "inner": {
+                    "type": "equals",
+                    "path": "$.status",
+                    "value": "affected"
+                  }
+                },
+                "right": { "type": "exists", "path": "$.action_statement" }
+              },
+              "message": "affected status should have action_statement",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "not",
+                  "inner": {
+                    "type": "equals",
+                    "path": "$.justification",
+                    "value": ""
+                  }
+                },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "exists",
+                    "path": "$.justification"
+                  }
+                }
+              },
+              "message": "justification must not be empty if present",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

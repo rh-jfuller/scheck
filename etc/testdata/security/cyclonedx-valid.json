@@ -1,0 +1,28 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2024-01-15T10:00:00Z",
+    "component": {
+      "type": "application",
+      "name": "my-app",
+      "version": "1.0.0"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "serde",
+      "version": "1.0.203",
+      "purl": "pkg:cargo/serde@1.0.203",
+      "bom-ref": "serde-1.0.203"
+    },
+    {
+      "type": "library",
+      "name": "tokio",
+      "version": "1.38.0",
+      "purl": "pkg:cargo/tokio@1.38.0"
+    }
+  ]
+}

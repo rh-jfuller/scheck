@@ -1,0 +1,23 @@
+{
+  "id": "no-prefix",
+  "summary": "Bad record",
+  "affected": [
+    {
+      "ranges": [
+        {
+          "type": "INVALID"
+        }
+      ]
+    }
+  ],
+  "references": [
+    {
+      "url": "not-a-url"
+    }
+  ],
+  "severity": [
+    {
+      "type": "CVSS_V5"
+    }
+  ]
+}

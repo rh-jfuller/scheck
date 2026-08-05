@@ -1,0 +1,9 @@
+{
+  "document": {
+    "title": "Missing Fields Advisory",
+    "tracking": {
+      "id": "BAD-001",
+      "status": "invalid_status"
+    }
+  }
+}

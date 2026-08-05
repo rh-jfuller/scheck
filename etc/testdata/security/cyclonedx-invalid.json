@@ -1,0 +1,8 @@
+{
+  "bomFormat": "not-cyclonedx",
+  "components": [
+    {
+      "name": "missing-type"
+    }
+  ]
+}

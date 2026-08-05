@@ -1,0 +1,13 @@
+{
+  "records": [
+    {
+      "name": "No ID",
+      "email": "not-an-email",
+      "phone": "555-1234",
+      "country": "United States"
+    },
+    {
+      "id": "c-002"
+    }
+  ]
+}

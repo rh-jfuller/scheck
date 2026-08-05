@@ -1,0 +1,281 @@
+{
+  "title": "OSV Record Validation",
+  "description": "Checks structural integrity of OSV (Open Source Vulnerabilities) records per the OSV schema (https://ossf.github.io/osv-schema/). Validates required fields, format constraints, and cross-reference consistency.",
+  "patterns": [
+    {
+      "name": "record-required",
+      "title": "Top-level required fields",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.id" },
+              "message": "id is required",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.id",
+                "pattern": "^[A-Z]+-"
+              },
+              "message": "id must start with a database prefix (e.g. GHSA-, CVE-, PYSEC-)",
+              "severity": "error"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.modified" },
+              "message": "modified timestamp is required",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.modified",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T"
+              },
+              "message": "modified must be RFC 3339 timestamp"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "affected-required",
+      "title": "Affected entries",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "count",
+                "path": "$.affected[*]",
+                "cmp": ">=",
+                "expected": 1
+              },
+              "message": "record should have at least one affected entry",
+              "severity": "warning"
+            }
+          ]
+        },
+        {
+          "context": "$.affected[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.package" },
+              "message": "affected entry must have package"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "exists", "path": "$.ranges" },
+                "right": { "type": "exists", "path": "$.versions" }
+              },
+              "message": "affected entry must have ranges or versions"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "package-fields",
+      "title": "Package identification",
+      "rules": [
+        {
+          "context": "$.affected[*].package",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.name" },
+              "message": "package.name is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.ecosystem" },
+              "message": "package.ecosystem is required"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": {
+                  "type": "matches",
+                  "path": "$.purl",
+                  "pattern": "^pkg:[a-z]+"
+                }
+              },
+              "message": "package.purl must use pkg: scheme if present"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "range-fields",
+      "title": "Range entry validation",
+      "rules": [
+        {
+          "context": "$.affected[*].ranges[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.type" },
+              "message": "range.type is required"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.type",
+                "pattern": "^(SEMVER|ECOSYSTEM|GIT)$"
+              },
+              "message": "range.type must be SEMVER, ECOSYSTEM, or GIT"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "count",
+                "path": "$.events[*]",
+                "cmp": ">=",
+                "expected": 1
+              },
+              "message": "range must have at least one event"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "references",
+      "title": "Reference validation",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "count",
+                "path": "$.references[*]",
+                "cmp": ">=",
+                "expected": 1
+              },
+              "message": "record should have at least one reference",
+              "severity": "warning"
+            }
+          ]
+        },
+        {
+          "context": "$.references[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.url" },
+              "message": "reference.url is required"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.url",
+                "pattern": "^https?://"
+              },
+              "message": "reference.url must be an HTTP(S) URL"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.type" },
+              "message": "reference.type is recommended",
+              "severity": "info"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "aliases",
+      "title": "Alias cross-references",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "report",
+              "test": { "type": "exists", "path": "$.aliases" },
+              "message": "record has aliases (cross-references)",
+              "severity": "info"
+            },
+            {
+              "kind": "report",
+              "test": { "type": "exists", "path": "$.related" },
+              "message": "record has related vulnerabilities",
+              "severity": "info"
+            }
+          ]
+        },
+        {
+          "context": "$.aliases[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "matches",
+                  "path": "$",
+                  "pattern": "^CVE-"
+                },
+                "right": {
+                  "type": "matches",
+                  "path": "$",
+                  "pattern": "^[A-Z]+-"
+                }
+              },
+              "message": "alias must use a recognized prefix",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "severity-fields",
+      "title": "Severity information",
+      "rules": [
+        {
+          "context": "$.severity[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.type" },
+              "message": "severity.type is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.score" },
+              "message": "severity.score is required"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.type",
+                "pattern": "^CVSS_V[234]$"
+              },
+              "message": "severity.type must be CVSS_V2, CVSS_V3, or CVSS_V4"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "records": [
+    {
+      "id": "c-001",
+      "name": "Alice Smith",
+      "email": "alice@example.com",
+      "phone": "+14155551234",
+      "country": "US"
+    },
+    {
+      "id": "c-002",
+      "name": "Bob Jones",
+      "email": "bob@example.com",
+      "country": "GB"
+    }
+  ]
+}

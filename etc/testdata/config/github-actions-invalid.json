@@ -1,0 +1,9 @@
+{
+  "jobs": {
+    "deploy": {
+      "steps": [
+        { "run": "deploy.sh" }
+      ]
+    }
+  }
+}

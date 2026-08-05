@@ -1,0 +1,161 @@
+{
+  "title": "Kubernetes Pod Policy",
+  "description": "Organizational policy checks for Kubernetes Pod/Deployment manifests (JSON representation). Enforces resource limits, disallows privileged containers, and requires labels.",
+  "patterns": [
+    {
+      "name": "metadata-required",
+      "title": "Metadata must include name and required labels",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.metadata" },
+              "message": "metadata is required",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.metadata.name" },
+              "message": "metadata.name is required",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.metadata.labels" },
+              "message": "metadata.labels is required",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.metadata.labels.app" },
+              "message": "metadata.labels.app is required",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "container-resources",
+      "title": "Containers must have resource limits",
+      "rules": [
+        {
+          "context": "$..containers[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.name" },
+              "message": "container must have name"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.image" },
+              "message": "container must have image"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.resources" },
+              "message": "container must have resources block",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.resources.limits" },
+              "message": "container must have resource limits",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.resources.limits.memory" },
+              "message": "container must have memory limit",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.resources.limits.cpu" },
+              "message": "container must have CPU limit",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "security-context",
+      "title": "Containers must not run privileged",
+      "rules": [
+        {
+          "context": "$..containers[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.securityContext.privileged" },
+                "right": {
+                  "type": "equals",
+                  "path": "$.securityContext.privileged",
+                  "value": "false"
+                }
+              },
+              "message": "container must not run privileged",
+              "flag": "security"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.securityContext.runAsRoot" },
+                "right": {
+                  "type": "equals",
+                  "path": "$.securityContext.runAsRoot",
+                  "value": "false"
+                }
+              },
+              "message": "container should not run as root",
+              "severity": "warning",
+              "flag": "security"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "image-policy",
+      "title": "Image references must be pinned",
+      "rules": [
+        {
+          "context": "$..containers[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "not",
+                "inner": {
+                  "type": "matches",
+                  "path": "$.image",
+                  "pattern": ":latest$"
+                }
+              },
+              "message": "image must not use :latest tag",
+              "severity": "warning",
+              "flag": "security"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.image",
+                "pattern": "[:@]"
+              },
+              "message": "image should be pinned to a tag or digest",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

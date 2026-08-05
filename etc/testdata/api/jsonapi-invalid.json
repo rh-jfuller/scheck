@@ -1,0 +1,11 @@
+{
+  "data": [
+    { "name": "missing type and id" }
+  ],
+  "errors": [
+    { "code": "500" }
+  ],
+  "included": [
+    { "type": "tags", "id": "1" }
+  ]
+}

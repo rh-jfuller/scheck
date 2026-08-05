@@ -1,0 +1,26 @@
+{
+  "statements": [
+    {
+      "vulnerability": "CVE-2024-12345",
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "products": ["pkg:cargo/my-lib@1.0.0"]
+    },
+    {
+      "vulnerability": "CVE-2024-67890",
+      "status": "affected",
+      "action_statement": "Upgrade to version 2.0.0 or later",
+      "products": ["pkg:cargo/my-lib@1.0.0"]
+    },
+    {
+      "vulnerability": "CVE-2024-11111",
+      "status": "fixed",
+      "products": ["pkg:cargo/my-lib@2.0.0"]
+    },
+    {
+      "vulnerability": "CVE-2024-22222",
+      "status": "under_investigation",
+      "products": ["pkg:cargo/my-lib@1.5.0"]
+    }
+  ]
+}

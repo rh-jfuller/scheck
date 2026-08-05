@@ -1,0 +1,78 @@
+{
+  "title": "GitHub Actions Workflow Policy",
+  "description": "Policy checks for GitHub Actions workflow files (JSON representation). Enforces timeout limits, restricted permissions, and pinned action versions.",
+  "patterns": [
+    {
+      "name": "workflow-required",
+      "title": "Workflow must have name and trigger",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.name" },
+              "message": "workflow must have name",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "exists", "path": "$.on" },
+                "right": { "type": "exists", "path": "$.true" }
+              },
+              "message": "workflow must have trigger (on)",
+              "severity": "fatal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "permissions",
+      "title": "Workflow should restrict permissions",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.permissions" },
+              "message": "workflow should declare explicit permissions",
+              "severity": "warning",
+              "flag": "security"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "job-fields",
+      "title": "Job required fields",
+      "rules": [
+        {
+          "context": "$.jobs.*",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$['runs-on']" },
+              "message": "job must specify runs-on"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.steps" },
+              "message": "job must have steps"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$['timeout-minutes']" },
+              "message": "job should have timeout-minutes",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

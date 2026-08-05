@@ -1,0 +1,11 @@
+{
+  "data": [
+    { "id": "usr-001", "name": "Alice", "email": "alice@example.com" },
+    { "id": "usr-002", "name": "Bob", "email": "bob@example.com" }
+  ],
+  "pagination": {
+    "page": 1,
+    "total": 42,
+    "per_page": 20
+  }
+}

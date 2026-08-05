@@ -1,0 +1,15 @@
+{
+  "statements": [
+    {
+      "vulnerability": "CVE-2024-12345",
+      "status": "not_affected"
+    },
+    {
+      "vulnerability": "CVE-2024-67890",
+      "status": "affected"
+    },
+    {
+      "status": "bogus_status"
+    }
+  ]
+}

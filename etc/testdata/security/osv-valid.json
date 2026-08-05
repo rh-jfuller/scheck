@@ -1,0 +1,42 @@
+{
+  "id": "GHSA-xxxx-yyyy-zzzz",
+  "modified": "2024-01-15T10:00:00Z",
+  "published": "2024-01-10T10:00:00Z",
+  "summary": "Buffer overflow in example library",
+  "details": "A buffer overflow vulnerability exists in example library versions prior to 2.0.0.",
+  "aliases": ["CVE-2024-12345"],
+  "severity": [
+    {
+      "type": "CVSS_V3",
+      "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+    }
+  ],
+  "affected": [
+    {
+      "package": {
+        "name": "example-lib",
+        "ecosystem": "npm",
+        "purl": "pkg:npm/example-lib"
+      },
+      "ranges": [
+        {
+          "type": "SEMVER",
+          "events": [
+            { "introduced": "0" },
+            { "fixed": "2.0.0" }
+          ]
+        }
+      ]
+    }
+  ],
+  "references": [
+    {
+      "type": "ADVISORY",
+      "url": "https://github.com/example/example-lib/security/advisories/GHSA-xxxx-yyyy-zzzz"
+    },
+    {
+      "type": "FIX",
+      "url": "https://github.com/example/example-lib/pull/123"
+    }
+  ]
+}

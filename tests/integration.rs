@@ -1,4 +1,4 @@
-#![expect(clippy::unwrap_used)]
+#![expect(clippy::unwrap_used, clippy::panic)]
 
 use scheck::{ResultKind, check, check_ok, check_phase, parse_schema, validate};
 
@@ -1193,4 +1193,213 @@ fn multiple_rules_different_contexts() {
     let doc = r#"{"items": [{"id": 1}, {"name": "no id"}]}"#;
     let report = check(rules, doc).unwrap();
     assert_eq!(report.error_count(), 1);
+}
+
+// -- Default rulesets ------------------------------------------------
+
+fn load_ruleset_from(domain: &str, name: &str) -> scheck::Schema {
+    let path = format!("rulesets/{domain}/{name}.json");
+    let src = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("cannot read {path}: {e}"));
+    serde_json::from_str(&src).unwrap_or_else(|e| panic!("cannot parse {path}: {e}"))
+}
+
+fn load_ruleset(name: &str) -> scheck::Schema {
+    load_ruleset_from("security", name)
+}
+
+fn load_testdata_from(domain: &str, name: &str) -> String {
+    let path = format!("etc/testdata/{domain}/{name}.json");
+    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("cannot read {path}: {e}"))
+}
+
+fn load_testdata(name: &str) -> String {
+    load_testdata_from("security", name)
+}
+
+#[test]
+fn csaf_ruleset_valid_document() {
+    let schema = load_ruleset("csaf-2.0-mandatory");
+    let doc = scheck::load(&load_testdata("csaf-valid")).unwrap();
+    let report = scheck::validate_phase(&schema, &doc, "full");
+    assert!(report.is_ok(), "expected OK, got:\n{}", report.to_text());
+}
+
+#[test]
+fn csaf_ruleset_invalid_document() {
+    let schema = load_ruleset("csaf-2.0-mandatory");
+    let doc = scheck::load(&load_testdata("csaf-invalid")).unwrap();
+    let report = scheck::validate_phase(&schema, &doc, "structural");
+    assert!(!report.is_ok());
+    assert!(
+        report.fatal_count() >= 3,
+        "expected at least 3 fatal errors"
+    );
+}
+
+#[test]
+fn cyclonedx_ruleset_valid_document() {
+    let schema = load_ruleset("cyclonedx-min");
+    let doc = scheck::load(&load_testdata("cyclonedx-valid")).unwrap();
+    let report = scheck::validate(&schema, &doc);
+    assert!(report.is_ok(), "expected OK, got:\n{}", report.to_text());
+}
+
+#[test]
+fn cyclonedx_ruleset_invalid_document() {
+    let schema = load_ruleset("cyclonedx-min");
+    let doc = scheck::load(&load_testdata("cyclonedx-invalid")).unwrap();
+    let report = scheck::validate(&schema, &doc);
+    assert!(!report.is_ok());
+    assert!(report.fatal_count() >= 1);
+}
+
+#[test]
+fn spdx_ruleset_valid_document() {
+    let schema = load_ruleset("spdx-min");
+    let doc = scheck::load(&load_testdata("spdx-valid")).unwrap();
+    let report = scheck::validate(&schema, &doc);
+    assert!(report.is_ok(), "expected OK, got:\n{}", report.to_text());
+}
+
+#[test]
+fn spdx_ruleset_invalid_document() {
+    let schema = load_ruleset("spdx-min");
+    let doc = scheck::load(&load_testdata("spdx-invalid")).unwrap();
+    let report = scheck::validate(&schema, &doc);
+    assert!(!report.is_ok());
+    assert!(report.fatal_count() >= 3);
+}
+
+#[test]
+fn vex_ruleset_valid_document() {
+    let schema = load_ruleset("vex-coherence");
+    let doc = scheck::load(&load_testdata("vex-valid")).unwrap();
+    let report = scheck::validate_phase(&schema, &doc, "full");
+    assert!(report.is_ok(), "expected OK, got:\n{}", report.to_text());
+}
+
+#[test]
+fn vex_ruleset_invalid_document() {
+    let schema = load_ruleset("vex-coherence");
+    let doc = scheck::load(&load_testdata("vex-invalid")).unwrap();
+    let report = scheck::validate_phase(&schema, &doc, "full");
+    assert!(!report.is_ok());
+}
+
+#[test]
+fn osv_ruleset_valid_document() {
+    let schema = load_ruleset("osv");
+    let doc = scheck::load(&load_testdata("osv-valid")).unwrap();
+    let report = scheck::validate(&schema, &doc);
+    assert!(report.is_ok(), "expected OK, got:\n{}", report.to_text());
+}
+
+#[test]
+fn osv_ruleset_invalid_document() {
+    let schema = load_ruleset("osv");
+    let doc = scheck::load(&load_testdata("osv-invalid")).unwrap();
+    let report = scheck::validate(&schema, &doc);
+    assert!(!report.is_ok());
+}
+
+// -- API rulesets ----------------------------------------------------
+
+#[test]
+fn openapi_response_valid() {
+    let schema = load_ruleset_from("api", "openapi-response");
+    let doc = scheck::load(&load_testdata_from("api", "openapi-response-valid")).unwrap();
+    let report = scheck::validate(&schema, &doc);
+    assert!(report.is_ok(), "expected OK, got:\n{}", report.to_text());
+}
+
+#[test]
+fn openapi_response_invalid() {
+    let schema = load_ruleset_from("api", "openapi-response");
+    let doc = scheck::load(&load_testdata_from("api", "openapi-response-invalid")).unwrap();
+    let report = scheck::validate(&schema, &doc);
+    assert!(!report.is_ok());
+}
+
+#[test]
+fn jsonapi_valid() {
+    let schema = load_ruleset_from("api", "jsonapi");
+    let doc = scheck::load(&load_testdata_from("api", "jsonapi-valid")).unwrap();
+    let report = scheck::validate(&schema, &doc);
+    assert!(report.is_ok(), "expected OK, got:\n{}", report.to_text());
+}
+
+#[test]
+fn jsonapi_invalid() {
+    let schema = load_ruleset_from("api", "jsonapi");
+    let doc = scheck::load(&load_testdata_from("api", "jsonapi-invalid")).unwrap();
+    let report = scheck::validate(&schema, &doc);
+    assert!(!report.is_ok());
+}
+
+// -- Config rulesets --------------------------------------------------
+
+#[test]
+fn kubernetes_pod_valid() {
+    let schema = load_ruleset_from("config", "kubernetes-pod");
+    let doc = scheck::load(&load_testdata_from("config", "kubernetes-pod-valid")).unwrap();
+    let report = scheck::validate(&schema, &doc);
+    assert!(report.is_ok(), "expected OK, got:\n{}", report.to_text());
+}
+
+#[test]
+fn kubernetes_pod_invalid() {
+    let schema = load_ruleset_from("config", "kubernetes-pod");
+    let doc = scheck::load(&load_testdata_from("config", "kubernetes-pod-invalid")).unwrap();
+    let report = scheck::validate(&schema, &doc);
+    assert!(!report.is_ok());
+}
+
+#[test]
+fn github_actions_valid() {
+    let schema = load_ruleset_from("config", "github-actions");
+    let doc = scheck::load(&load_testdata_from("config", "github-actions-valid")).unwrap();
+    let report = scheck::validate(&schema, &doc);
+    assert!(report.is_ok(), "expected OK, got:\n{}", report.to_text());
+}
+
+#[test]
+fn github_actions_invalid() {
+    let schema = load_ruleset_from("config", "github-actions");
+    let doc = scheck::load(&load_testdata_from("config", "github-actions-invalid")).unwrap();
+    let report = scheck::validate(&schema, &doc);
+    assert!(!report.is_ok());
+}
+
+// -- Data quality rulesets --------------------------------------------
+
+#[test]
+fn contact_records_valid() {
+    let schema = load_ruleset_from("data-quality", "contact-records");
+    let doc = scheck::load(&load_testdata_from("data-quality", "contacts-valid")).unwrap();
+    let report = scheck::validate(&schema, &doc);
+    assert!(report.is_ok(), "expected OK, got:\n{}", report.to_text());
+}
+
+#[test]
+fn contact_records_invalid() {
+    let schema = load_ruleset_from("data-quality", "contact-records");
+    let doc = scheck::load(&load_testdata_from("data-quality", "contacts-invalid")).unwrap();
+    let report = scheck::validate(&schema, &doc);
+    assert!(!report.is_ok());
+}
+
+#[test]
+fn dataset_metadata_valid() {
+    let schema = load_ruleset_from("data-quality", "dataset-metadata");
+    let doc = scheck::load(&load_testdata_from("data-quality", "dataset-valid")).unwrap();
+    let report = scheck::validate(&schema, &doc);
+    assert!(report.is_ok(), "expected OK, got:\n{}", report.to_text());
+}
+
+#[test]
+fn dataset_metadata_invalid() {
+    let schema = load_ruleset_from("data-quality", "dataset-metadata");
+    let doc = scheck::load(&load_testdata_from("data-quality", "dataset-invalid")).unwrap();
+    let report = scheck::validate(&schema, &doc);
+    assert!(!report.is_ok());
 }

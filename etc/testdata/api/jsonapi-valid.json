@@ -1,0 +1,15 @@
+{
+  "data": [
+    {
+      "type": "users",
+      "id": "1",
+      "attributes": {
+        "name": "Alice"
+      }
+    }
+  ],
+  "links": {
+    "self": "/api/users?page=1",
+    "next": "/api/users?page=2"
+  }
+}

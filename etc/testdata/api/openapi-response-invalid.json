@@ -1,0 +1,11 @@
+{
+  "error": {
+    "status": 500
+  },
+  "data": [
+    { "name": "no id" }
+  ],
+  "pagination": {
+    "offset": 0
+  }
+}

@@ -289,6 +289,28 @@ let report = scheck::check_json(rules_json, doc_json)?;
 let report = scheck::check(rules_dsl, doc_json)?;
 ```
 
+## Rulesets
+
+scheck ships with ready-to-use rulesets under [`rulesets/`](rulesets/),
+organized by domain:
+
+| Domain | Directory | Rulesets |
+|--------|-----------|----------|
+| [Security](rulesets/security/) | `rulesets/security/` | CSAF 2.0, CycloneDX, SPDX, VEX, OSV |
+| [API](rulesets/api/) | `rulesets/api/` | REST response contracts, JSON:API |
+| [Config](rulesets/config/) | `rulesets/config/` | Kubernetes pod policy, GitHub Actions |
+| [Data Quality](rulesets/data-quality/) | `rulesets/data-quality/` | Contact records, dataset metadata |
+
+```
+$ scheck validate advisory.json --rules rulesets/security/csaf-2.0-mandatory.json --phase full
+$ scheck validate response.json --rules rulesets/api/jsonapi.json
+$ scheck validate pod.yaml --rules rulesets/config/kubernetes-pod.json
+$ scheck validate contacts.json --rules rulesets/data-quality/contact-records.json
+```
+
+See [`rulesets/README.md`](rulesets/README.md) for the full catalog. Each
+subdirectory has its own README with details, phases, and limitations.
+
 ## Why rules-as-data?
 
 - **Portable** -- JSON rules work in any language. No Rust required.

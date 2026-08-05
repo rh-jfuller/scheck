@@ -1,0 +1,11 @@
+{
+  "spdxVersion": "SPDX-1.0",
+  "dataLicense": "MIT",
+  "SPDXID": "wrong-id",
+  "documentNamespace": "not-a-uri",
+  "packages": [
+    {
+      "name": "missing-spdxid"
+    }
+  ]
+}

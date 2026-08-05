@@ -1,0 +1,141 @@
+{
+  "title": "Contact Record Quality",
+  "description": "Data quality checks for contact/user records. Validates required fields, email/phone format, and country codes.",
+  "patterns": [
+    {
+      "name": "identity-required",
+      "title": "Records must have identity fields",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "exists", "path": "$.records" },
+                "right": { "type": "exists", "path": "$.data" }
+              },
+              "message": "document must contain records or data array",
+              "severity": "fatal"
+            }
+          ]
+        },
+        {
+          "context": "$..records[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "exists", "path": "$.id" },
+                "right": { "type": "exists", "path": "$.uuid" }
+              },
+              "message": "record must have id or uuid"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.name" },
+              "message": "record must have name"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "email-format",
+      "title": "Email addresses must be well-formed",
+      "rules": [
+        {
+          "context": "$..records[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.email" },
+                "right": {
+                  "type": "matches",
+                  "path": "$.email",
+                  "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"
+                }
+              },
+              "message": "email must be a valid address if present"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "phone-format",
+      "title": "Phone numbers must use E.164 format",
+      "rules": [
+        {
+          "context": "$..records[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.phone" },
+                "right": {
+                  "type": "matches",
+                  "path": "$.phone",
+                  "pattern": "^\\+[1-9]\\d{1,14}$"
+                }
+              },
+              "message": "phone must use E.164 format (+XNNNNN) if present",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "country-code",
+      "title": "Country codes must be ISO 3166-1 alpha-2",
+      "rules": [
+        {
+          "context": "$..records[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.country" },
+                "right": {
+                  "type": "matches",
+                  "path": "$.country",
+                  "pattern": "^[A-Z]{2}$"
+                }
+              },
+              "message": "country must be ISO 3166-1 alpha-2 code if present",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "contact-required",
+      "title": "Records should have at least one contact method",
+      "rules": [
+        {
+          "context": "$..records[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "exists", "path": "$.email" },
+                "right": { "type": "exists", "path": "$.phone" }
+              },
+              "message": "record should have email or phone",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

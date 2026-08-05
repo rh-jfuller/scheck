@@ -1,0 +1,314 @@
+{
+  "title": "CSAF 2.0 Mandatory Checks",
+  "description": "Structural checks from CSAF 2.0 section 6.1. Covers required fields, format constraints, and status consistency. Cross-reference uniqueness checks (6.1.1-6.1.5, 6.1.23-6.1.25) and CVSS computation checks (6.1.8-6.1.10) require dedicated tooling beyond scheck.",
+  "default_phase": "structural",
+  "phases": [
+    {
+      "name": "structural",
+      "active_patterns": [
+        "document-required",
+        "tracking-required",
+        "publisher-required",
+        "vulnerability-fields"
+      ]
+    },
+    {
+      "name": "full",
+      "active_patterns": [
+        "document-required",
+        "tracking-required",
+        "publisher-required",
+        "vulnerability-fields",
+        "tracking-format",
+        "document-category",
+        "revision-history"
+      ]
+    }
+  ],
+  "diagnostics": [
+    { "id": "csaf-3.1", "message": "CSAF 2.0 spec section 3.1 — document-level properties" },
+    { "id": "csaf-3.1.7", "message": "CSAF 2.0 spec section 3.1.7 — tracking" },
+    { "id": "csaf-3.1.8", "message": "CSAF 2.0 spec section 3.1.8 — publisher" },
+    { "id": "csaf-6.1.26", "message": "CSAF 2.0 test 6.1.26 — prohibited document category name" },
+    { "id": "csaf-6.1.14", "message": "CSAF 2.0 test 6.1.14 — revision history" }
+  ],
+  "patterns": [
+    {
+      "name": "document-required",
+      "title": "Document-level required fields (CSAF 3.1)",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.document" },
+              "message": "document property is required",
+              "severity": "fatal",
+              "diagnostics": ["csaf-3.1"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.document.category" },
+              "message": "document.category is required",
+              "severity": "fatal",
+              "diagnostics": ["csaf-3.1"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.document.csaf_version" },
+              "message": "document.csaf_version is required",
+              "severity": "fatal",
+              "diagnostics": ["csaf-3.1"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.document.title" },
+              "message": "document.title is required",
+              "severity": "fatal",
+              "diagnostics": ["csaf-3.1"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.document.publisher" },
+              "message": "document.publisher is required",
+              "severity": "fatal",
+              "diagnostics": ["csaf-3.1"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.document.tracking" },
+              "message": "document.tracking is required",
+              "severity": "fatal",
+              "diagnostics": ["csaf-3.1"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tracking-required",
+      "title": "Tracking required fields (CSAF 3.1.7)",
+      "rules": [
+        {
+          "context": "$.document.tracking",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.current_release_date" },
+              "message": "tracking.current_release_date is required",
+              "diagnostics": ["csaf-3.1.7"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.id" },
+              "message": "tracking.id is required",
+              "diagnostics": ["csaf-3.1.7"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.initial_release_date" },
+              "message": "tracking.initial_release_date is required",
+              "diagnostics": ["csaf-3.1.7"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.revision_history" },
+              "message": "tracking.revision_history is required",
+              "diagnostics": ["csaf-3.1.7"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.status" },
+              "message": "tracking.status is required",
+              "diagnostics": ["csaf-3.1.7"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.version" },
+              "message": "tracking.version is required",
+              "diagnostics": ["csaf-3.1.7"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "publisher-required",
+      "title": "Publisher required fields (CSAF 3.1.8)",
+      "rules": [
+        {
+          "context": "$.document.publisher",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.category" },
+              "message": "publisher.category is required",
+              "diagnostics": ["csaf-3.1.8"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.name" },
+              "message": "publisher.name is required",
+              "diagnostics": ["csaf-3.1.8"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.namespace" },
+              "message": "publisher.namespace is required",
+              "diagnostics": ["csaf-3.1.8"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tracking-format",
+      "title": "Tracking field format constraints",
+      "rules": [
+        {
+          "context": "$.document.tracking",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.status",
+                "pattern": "^(draft|final|interim)$"
+              },
+              "message": "tracking.status must be draft, final, or interim",
+              "diagnostics": ["csaf-3.1.7"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.id",
+                "pattern": "^[\\S](.*[\\S])?$"
+              },
+              "message": "tracking.id must not start or end with whitespace",
+              "diagnostics": ["csaf-3.1.7"]
+            }
+          ]
+        },
+        {
+          "context": "$.document",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.csaf_version",
+                "pattern": "^2\\.0$"
+              },
+              "message": "csaf_version must be 2.0",
+              "diagnostics": ["csaf-3.1"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "document-category",
+      "title": "Document category constraints (6.1.26)",
+      "rules": [
+        {
+          "context": "$.document",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.category",
+                "pattern": "\\S"
+              },
+              "message": "document.category must not be empty",
+              "diagnostics": ["csaf-6.1.26"]
+            },
+            {
+              "kind": "report",
+              "test": {
+                "type": "matches",
+                "path": "$.category",
+                "pattern": "^(csaf_base|csaf_security_incident_response|csaf_informational_advisory|csaf_security_advisory|csaf_vex)$"
+              },
+              "message": "document uses a standard CSAF profile category",
+              "severity": "info"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "vulnerability-fields",
+      "title": "Vulnerability-level required fields",
+      "rules": [
+        {
+          "context": "$..vulnerabilities[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "exists", "path": "$.cve" },
+                "right": { "type": "exists", "path": "$.ids" }
+              },
+              "message": "vulnerability must have cve or ids",
+              "severity": "warning"
+            }
+          ]
+        },
+        {
+          "context": "$..vulnerabilities[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "not_exists",
+                  "path": "$.cve"
+                },
+                "right": {
+                  "type": "matches",
+                  "path": "$.cve",
+                  "pattern": "^CVE-[0-9]{4}-[0-9]{4,}$"
+                }
+              },
+              "message": "cve must match CVE-YYYY-NNNNN+ format"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "revision-history",
+      "title": "Revision history entry fields (6.1.14)",
+      "rules": [
+        {
+          "context": "$.document.tracking.revision_history[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.date" },
+              "message": "revision_history entry must have date",
+              "diagnostics": ["csaf-6.1.14"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.number" },
+              "message": "revision_history entry must have number",
+              "diagnostics": ["csaf-6.1.14"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.summary" },
+              "message": "revision_history entry must have summary",
+              "diagnostics": ["csaf-6.1.14"]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

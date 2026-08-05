@@ -1,0 +1,175 @@
+{
+  "title": "CycloneDX Minimum Elements",
+  "description": "Minimum required fields for a valid CycloneDX SBOM (1.4+). Checks structural presence of required properties per the CycloneDX specification.",
+  "patterns": [
+    {
+      "name": "bom-required",
+      "title": "Top-level BOM required fields",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.bomFormat" },
+              "message": "bomFormat is required",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "equals",
+                "path": "$.bomFormat",
+                "value": "CycloneDX"
+              },
+              "message": "bomFormat must be \"CycloneDX\"",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.specVersion" },
+              "message": "specVersion is required",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.specVersion",
+                "pattern": "^1\\.[4-9]$|^[2-9]\\."
+              },
+              "message": "specVersion must be 1.4 or later",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "exists", "path": "$.components" },
+                "right": { "type": "exists", "path": "$.services" }
+              },
+              "message": "BOM must contain components or services",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "component-required",
+      "title": "Component required fields",
+      "rules": [
+        {
+          "context": "$.components[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.type" },
+              "message": "component.type is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.name" },
+              "message": "component.name is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.version" },
+              "message": "component.version is required",
+              "severity": "warning"
+            },
+            {
+              "kind": "report",
+              "test": { "type": "exists", "path": "$.purl" },
+              "message": "component has PURL",
+              "severity": "info"
+            },
+            {
+              "kind": "report",
+              "test": { "type": "exists", "path": "$.bom-ref" },
+              "message": "component has bom-ref",
+              "severity": "info"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "component-type-valid",
+      "title": "Component type must be a known value",
+      "rules": [
+        {
+          "context": "$.components[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.type",
+                "pattern": "^(application|framework|library|container|platform|device-driver|firmware|file|operating-system|machine-learning-model|data)$"
+              },
+              "message": "component.type must be a valid CycloneDX component type"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "metadata-recommended",
+      "title": "Metadata recommended fields",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.metadata" },
+              "message": "metadata is recommended",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.metadata.timestamp" },
+              "message": "metadata.timestamp is recommended",
+              "severity": "info"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "exists", "path": "$.metadata.component" },
+                "right": { "type": "exists", "path": "$.metadata.manufacture" }
+              },
+              "message": "metadata should identify subject component or manufacturer",
+              "severity": "info"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "purl-format",
+      "title": "PURL format validation",
+      "rules": [
+        {
+          "context": "$.components[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": {
+                  "type": "matches",
+                  "path": "$.purl",
+                  "pattern": "^pkg:[a-z]+"
+                }
+              },
+              "message": "purl must start with pkg: scheme"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

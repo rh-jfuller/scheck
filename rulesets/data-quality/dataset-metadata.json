@@ -1,0 +1,168 @@
+{
+  "title": "Dataset Metadata Quality",
+  "description": "Checks metadata completeness for datasets and data catalogs. Validates provenance fields, licensing, temporal coverage, and schema documentation.",
+  "patterns": [
+    {
+      "name": "dataset-required",
+      "title": "Dataset must have core metadata",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.name" },
+              "message": "dataset must have name",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.description" },
+              "message": "dataset must have description"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.version" },
+              "message": "dataset should have version",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "provenance",
+      "title": "Dataset must document provenance",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "exists", "path": "$.source" },
+                "right": { "type": "exists", "path": "$.publisher" }
+              },
+              "message": "dataset should document source or publisher",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "exists", "path": "$.created" },
+                "right": { "type": "exists", "path": "$.modified" }
+              },
+              "message": "dataset should have created or modified date",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "license",
+      "title": "Dataset must declare a license",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.license" },
+              "message": "dataset must declare a license"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.license" },
+                "right": {
+                  "type": "matches",
+                  "path": "$.license",
+                  "pattern": "\\S"
+                }
+              },
+              "message": "license must not be empty"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "temporal",
+      "title": "Date fields must use ISO 8601",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.created" },
+                "right": {
+                  "type": "matches",
+                  "path": "$.created",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}"
+                }
+              },
+              "message": "created must be ISO 8601 date if present"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.modified" },
+                "right": {
+                  "type": "matches",
+                  "path": "$.modified",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}"
+                }
+              },
+              "message": "modified must be ISO 8601 date if present"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "schema-docs",
+      "title": "Dataset should document its schema",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "exists", "path": "$.schema" },
+                "right": { "type": "exists", "path": "$.fields" }
+              },
+              "message": "dataset should document schema or fields",
+              "severity": "warning"
+            }
+          ]
+        },
+        {
+          "context": "$..fields[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.name" },
+              "message": "field must have name"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.type" },
+              "message": "field should have type",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

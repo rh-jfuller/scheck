@@ -1,0 +1,14 @@
+{
+  "name": "quarterly-sales",
+  "description": "Quarterly sales data by region",
+  "version": "2024-Q1",
+  "license": "CC-BY-4.0",
+  "source": "internal ERP system",
+  "created": "2024-01-15",
+  "modified": "2024-04-01",
+  "fields": [
+    { "name": "region", "type": "string", "description": "Sales region code" },
+    { "name": "revenue", "type": "number", "description": "Total revenue in USD" },
+    { "name": "quarter", "type": "string", "description": "Calendar quarter" }
+  ]
+}

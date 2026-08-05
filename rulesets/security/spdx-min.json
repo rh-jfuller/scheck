@@ -1,0 +1,217 @@
+{
+  "title": "SPDX Minimum Elements",
+  "description": "Minimum required fields for a valid SPDX 2.3 document (JSON format). Checks structural presence per the SPDX 2.3 specification.",
+  "patterns": [
+    {
+      "name": "document-required",
+      "title": "Document-level required fields",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.spdxVersion" },
+              "message": "spdxVersion is required",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.spdxVersion",
+                "pattern": "^SPDX-2\\.[23]$"
+              },
+              "message": "spdxVersion must be SPDX-2.2 or SPDX-2.3",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.dataLicense" },
+              "message": "dataLicense is required",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "equals",
+                "path": "$.dataLicense",
+                "value": "CC0-1.0"
+              },
+              "message": "dataLicense must be CC0-1.0",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.SPDXID" },
+              "message": "SPDXID is required",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "equals",
+                "path": "$.SPDXID",
+                "value": "SPDXRef-DOCUMENT"
+              },
+              "message": "SPDXID must be SPDXRef-DOCUMENT",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.name" },
+              "message": "name is required",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.documentNamespace" },
+              "message": "documentNamespace is required",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.documentNamespace",
+                "pattern": "^https?://"
+              },
+              "message": "documentNamespace must be a URI",
+              "severity": "error"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "creation-info",
+      "title": "Creation info required fields",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.creationInfo" },
+              "message": "creationInfo is required",
+              "severity": "fatal"
+            }
+          ]
+        },
+        {
+          "context": "$.creationInfo",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.created" },
+              "message": "creationInfo.created is required"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.created",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}"
+              },
+              "message": "creationInfo.created must be ISO 8601 datetime"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "count", "path": "$.creators[*]", "cmp": ">=", "expected": 1 },
+              "message": "creationInfo.creators must have at least one entry"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "packages",
+      "title": "Package required fields",
+      "rules": [
+        {
+          "context": "$.packages[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.SPDXID" },
+              "message": "package.SPDXID is required"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.SPDXID",
+                "pattern": "^SPDXRef-[a-zA-Z0-9._-]+$"
+              },
+              "message": "package.SPDXID must match SPDXRef-[idstring] format"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.name" },
+              "message": "package.name is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.downloadLocation" },
+              "message": "package.downloadLocation is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.versionInfo" },
+              "message": "package.versionInfo is recommended",
+              "severity": "warning"
+            },
+            {
+              "kind": "report",
+              "test": { "type": "exists", "path": "$.externalRefs" },
+              "message": "package has externalRefs",
+              "severity": "info"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "relationships",
+      "title": "Relationships recommended",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "count",
+                "path": "$.relationships[*]",
+                "cmp": ">=",
+                "expected": 1
+              },
+              "message": "document should have at least one relationship",
+              "severity": "warning"
+            }
+          ]
+        },
+        {
+          "context": "$.relationships[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.spdxElementId" },
+              "message": "relationship.spdxElementId is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.relationshipType" },
+              "message": "relationship.relationshipType is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.relatedSpdxElement" },
+              "message": "relationship.relatedSpdxElement is required"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

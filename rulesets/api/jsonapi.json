@@ -1,0 +1,118 @@
+{
+  "title": "JSON:API Compliance",
+  "description": "Validates JSON:API (https://jsonapi.org/) response structure. Checks top-level document structure, resource object fields, and relationship format.",
+  "patterns": [
+    {
+      "name": "top-level",
+      "title": "Top-level document structure",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "exists", "path": "$.data" },
+                "right": {
+                  "type": "or",
+                  "left": { "type": "exists", "path": "$.errors" },
+                  "right": { "type": "exists", "path": "$.meta" }
+                }
+              },
+              "message": "document must contain data, errors, or meta",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.data" },
+                "right": { "type": "not_exists", "path": "$.errors" }
+              },
+              "message": "data and errors must not coexist"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "exists", "path": "$.data" },
+                "right": { "type": "not_exists", "path": "$.included" }
+              },
+              "message": "included must not be present without data"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "resource-objects",
+      "title": "Resource object required fields",
+      "rules": [
+        {
+          "context": "$.data[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.type" },
+              "message": "resource must have type"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.id" },
+              "message": "resource must have id"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "error-objects",
+      "title": "Error object fields",
+      "rules": [
+        {
+          "context": "$.errors[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "exists", "path": "$.status" },
+                "right": {
+                  "type": "or",
+                  "left": { "type": "exists", "path": "$.title" },
+                  "right": { "type": "exists", "path": "$.detail" }
+                }
+              },
+              "message": "error must have status, title, or detail",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "links",
+      "title": "Links object structure",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "report",
+              "test": { "type": "exists", "path": "$.links.self" },
+              "message": "document has self link",
+              "severity": "info"
+            },
+            {
+              "kind": "report",
+              "test": { "type": "exists", "path": "$.links.next" },
+              "message": "document has pagination (next link)",
+              "severity": "info"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

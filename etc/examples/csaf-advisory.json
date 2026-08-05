@@ -1,0 +1,83 @@
+{
+  "title": "CSAF Advisory Checks",
+  "description": "Validates CSAF 2.0 advisory documents",
+  "default_phase": "quick",
+  "phases": [
+    { "name": "quick", "active_patterns": ["required-fields"] },
+    { "name": "full", "active_patterns": ["required-fields", "cve-format", "status-consistency"] }
+  ],
+  "diagnostics": [
+    { "id": "csaf-4.2", "message": "See CSAF 2.0 spec, section 4.2" }
+  ],
+  "patterns": [
+    {
+      "name": "required-fields",
+      "title": "Core fields must be present",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.document" },
+              "message": "document root is required",
+              "severity": "fatal",
+              "diagnostics": ["csaf-4.2"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.document.title" },
+              "message": "document must have a title"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.document.tracking.id" },
+              "message": "tracking ID is required"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cve-format",
+      "title": "CVE identifiers must be well-formed",
+      "rules": [
+        {
+          "context": "$..vulnerabilities[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.cve",
+                "pattern": "^CVE-\\d{4}-\\d{4,}$"
+              },
+              "message": "CVE ID must match standard format"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "status-consistency",
+      "title": "Status and dates must be consistent",
+      "rules": [
+        {
+          "context": "$.document",
+          "checks": [
+            {
+              "kind": "report",
+              "test": {
+                "type": "equals",
+                "path": "$.tracking.status",
+                "value": "final"
+              },
+              "message": "document is marked final",
+              "severity": "info"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

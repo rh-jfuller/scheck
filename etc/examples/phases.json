@@ -1,0 +1,44 @@
+{
+  "title": "phased checks",
+  "default_phase": "quick",
+  "phases": [
+    { "name": "quick", "active_patterns": ["required"] },
+    { "name": "full", "active_patterns": ["required", "format"] }
+  ],
+  "patterns": [
+    {
+      "name": "required",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.id" },
+              "message": "id required"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "format",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.id",
+                "pattern": "^[A-Z]"
+              },
+              "message": "id must start uppercase"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

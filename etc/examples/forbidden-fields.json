@@ -1,0 +1,27 @@
+{
+  "title": "no secrets",
+  "patterns": [
+    {
+      "name": "security",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "not_exists", "path": "$.password" },
+              "message": "must not contain password",
+              "flag": "security"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "not_exists", "path": "$.secret" },
+              "message": "must not contain secret",
+              "flag": "security"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

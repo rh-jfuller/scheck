@@ -1,0 +1,38 @@
+{
+  "title": "severity demo",
+  "patterns": [
+    {
+      "name": "checks",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.id" },
+              "message": "id is required",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.name" },
+              "message": "name is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.description" },
+              "message": "description is recommended",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.metadata" },
+              "message": "metadata is optional",
+              "severity": "info"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

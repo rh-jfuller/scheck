@@ -1,49 +1,55 @@
 # scheck examples
 
-Practical examples showing how to use scheck for semantic validation.
-Each example includes rule files, input documents, and CLI invocations.
+Practical examples for semantic validation with scheck.
+Each example includes a JSON rule file, input documents, and CLI invocations.
 All files live under [`etc/examples/`](../etc/examples/).
+
+DSL equivalents (`.scheck` files) are provided alongside each JSON rule file
+for those who prefer a concise hand-written format.
 
 ## Required fields
 
 Ensure a document contains mandatory fields.
 
-**Rules:** [`required-fields.scheck`](../etc/examples/required-fields.scheck)
-| [`required-fields.json`](../etc/examples/required-fields.json) (JSON equivalent)
+**Rules:** [`required-fields.json`](../etc/examples/required-fields.json)
+| [DSL](../etc/examples/required-fields.scheck)
 
-```
-schema "required fields" {
-  pattern "basics" {
-    rule context="$" {
-      assert exists("$.name")
-        message="name is required";
-      assert exists("$.email")
-        message="email is required";
+```json
+{
+  "title": "required fields",
+  "patterns": [
+    {
+      "name": "basics",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.name" },
+              "message": "name is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.email" },
+              "message": "email is required"
+            }
+          ]
+        }
+      ]
     }
-  }
+  ]
 }
 ```
 
-**Pass:** [`required-fields-pass.json`](../etc/examples/required-fields-pass.json)
-
 ```
-$ scheck validate etc/examples/required-fields-pass.json --rules etc/examples/required-fields.scheck
+$ scheck validate etc/examples/required-fields-pass.json --rules etc/examples/required-fields.json
 OK: all checks passed
-```
 
-**Fail:** [`required-fields-fail.json`](../etc/examples/required-fields-fail.json)
-
-```
-$ scheck validate etc/examples/required-fields-fail.json --rules etc/examples/required-fields.scheck
+$ scheck validate etc/examples/required-fields-fail.json --rules etc/examples/required-fields.json
 [error] basics at $: email is required
 
 1 error(s), 0 warning(s), 0 info(s)
-```
-
-JSON rules work identically:
-
-```
-$ scheck validate etc/examples/required-fields-fail.json --rules etc/examples/required-fields.json
 ```
 
 ---
@@ -52,28 +58,44 @@ $ scheck validate etc/examples/required-fields-fail.json --rules etc/examples/re
 
 Reject documents containing sensitive fields.
 
-**Rules:** [`forbidden-fields.scheck`](../etc/examples/forbidden-fields.scheck)
+**Rules:** [`forbidden-fields.json`](../etc/examples/forbidden-fields.json)
+| [DSL](../etc/examples/forbidden-fields.scheck)
 
-```
-schema "no secrets" {
-  pattern "security" {
-    rule context="$" {
-      assert not_exists("$.password")
-        message="must not contain password"
-        flag="security";
-      assert not_exists("$.secret")
-        message="must not contain secret"
-        flag="security";
+```json
+{
+  "title": "no secrets",
+  "patterns": [
+    {
+      "name": "security",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "not_exists", "path": "$.password" },
+              "message": "must not contain password",
+              "flag": "security"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "not_exists", "path": "$.secret" },
+              "message": "must not contain secret",
+              "flag": "security"
+            }
+          ]
+        }
+      ]
     }
-  }
+  ]
 }
 ```
 
 ```
-$ scheck validate etc/examples/forbidden-fields-pass.json --rules etc/examples/forbidden-fields.scheck
+$ scheck validate etc/examples/forbidden-fields-pass.json --rules etc/examples/forbidden-fields.json
 OK: all checks passed
 
-$ scheck validate etc/examples/forbidden-fields-fail.json --rules etc/examples/forbidden-fields.scheck
+$ scheck validate etc/examples/forbidden-fields-fail.json --rules etc/examples/forbidden-fields.json
 [error] security at $: must not contain password
 
 1 error(s), 0 warning(s), 0 info(s)
@@ -85,24 +107,41 @@ $ scheck validate etc/examples/forbidden-fields-fail.json --rules etc/examples/f
 
 Validate string values match an expected format.
 
-**Rules:** [`regex-matching.scheck`](../etc/examples/regex-matching.scheck)
+**Rules:** [`regex-matching.json`](../etc/examples/regex-matching.json)
+| [DSL](../etc/examples/regex-matching.scheck)
 
-```
-schema "format checks" {
-  pattern "identifiers" {
-    rule context="$" {
-      assert matches("$.cve", "^CVE-\\d{4}-\\d{4,}$")
-        message="CVE ID must match standard format";
+```json
+{
+  "title": "format checks",
+  "patterns": [
+    {
+      "name": "identifiers",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.cve",
+                "pattern": "^CVE-\\d{4}-\\d{4,}$"
+              },
+              "message": "CVE ID must match standard format"
+            }
+          ]
+        }
+      ]
     }
-  }
+  ]
 }
 ```
 
 ```
-$ scheck validate etc/examples/regex-matching-pass.json --rules etc/examples/regex-matching.scheck
+$ scheck validate etc/examples/regex-matching-pass.json --rules etc/examples/regex-matching.json
 OK: all checks passed
 
-$ scheck validate etc/examples/regex-matching-fail.json --rules etc/examples/regex-matching.scheck
+$ scheck validate etc/examples/regex-matching-fail.json --rules etc/examples/regex-matching.json
 [error] identifiers at $: CVE ID must match standard format
 
 1 error(s), 0 warning(s), 0 info(s)
@@ -114,14 +153,26 @@ $ scheck validate etc/examples/regex-matching-fail.json --rules etc/examples/reg
 
 Assert a field has a specific value.
 
-```
-schema "status check" {
-  pattern "state" {
-    rule context="$" {
-      assert equals("$.status", "active")
-        message="status must be active";
+```json
+{
+  "title": "status check",
+  "patterns": [
+    {
+      "name": "state",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "equals", "path": "$.status", "value": "active" },
+              "message": "status must be active"
+            }
+          ]
+        }
+      ]
     }
-  }
+  ]
 }
 ```
 
@@ -135,17 +186,32 @@ schema "status check" {
 
 Require a minimum (or exact) number of elements.
 
-```
-schema "array checks" {
-  pattern "tags" {
-    rule context="$" {
-      assert count("$.tags[*]", >=, 1)
-        message="need at least one tag";
-      assert count("$.authors[*]", >=, 1)
-        message="need at least one author"
-        severity=warning;
+```json
+{
+  "title": "array checks",
+  "patterns": [
+    {
+      "name": "tags",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "count", "path": "$.tags[*]", "cmp": ">=", "expected": 1 },
+              "message": "need at least one tag"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "count", "path": "$.authors[*]", "cmp": ">=", "expected": 1 },
+              "message": "need at least one author",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
     }
-  }
+  ]
 }
 ```
 
@@ -153,7 +219,7 @@ schema "array checks" {
 
 **Fail:** `{"tags": []}` -- `[error] need at least one tag`
 
-All comparison operators are supported: `==`, `!=`, `<`, `<=`, `>`, `>=`.
+Supported comparison operators: `==`, `!=`, `<`, `<=`, `>`, `>=`.
 
 ---
 
@@ -161,23 +227,47 @@ All comparison operators are supported: `==`, `!=`, `<`, `<=`, `>`, `>=`.
 
 Combine predicates with `and`, `or`, and `not`.
 
-```
-schema "contact info" {
-  pattern "contact" {
-    rule context="$" {
-      # Require at least one contact method
-      assert exists("$.phone") or exists("$.email")
-        message="need phone or email";
-
-      # Require both name and age
-      assert exists("$.name") and exists("$.age")
-        message="need both name and age";
-
-      # Reject deprecated documents
-      assert not(exists("$.deprecated"))
-        message="document must not be deprecated";
+```json
+{
+  "title": "contact info",
+  "patterns": [
+    {
+      "name": "contact",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "exists", "path": "$.phone" },
+                "right": { "type": "exists", "path": "$.email" }
+              },
+              "message": "need phone or email"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "and",
+                "left": { "type": "exists", "path": "$.name" },
+                "right": { "type": "exists", "path": "$.age" }
+              },
+              "message": "need both name and age"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "not",
+                "inner": { "type": "exists", "path": "$.deprecated" }
+              },
+              "message": "document must not be deprecated"
+            }
+          ]
+        }
+      ]
     }
-  }
+  ]
 }
 ```
 
@@ -191,14 +281,26 @@ schema "contact info" {
 
 Use `$..field` to find fields at any depth.
 
-```
-schema "deep search" {
-  pattern "nested" {
-    rule context="$" {
-      assert exists("$..email")
-        message="email must exist somewhere in document";
+```json
+{
+  "title": "deep search",
+  "patterns": [
+    {
+      "name": "nested",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$..email" },
+              "message": "email must exist somewhere in document"
+            }
+          ]
+        }
+      ]
     }
-  }
+  ]
 }
 ```
 
@@ -212,26 +314,42 @@ schema "deep search" {
 
 Use a context path to apply checks to each array element.
 
-**Rules:** [`array-context.scheck`](../etc/examples/array-context.scheck)
+**Rules:** [`array-context.json`](../etc/examples/array-context.json)
+| [DSL](../etc/examples/array-context.scheck)
 
-```
-schema "item checks" {
-  pattern "items" {
-    rule context="$.items[*]" {
-      assert exists("$.name")
-        message="every item must have a name";
-      assert exists("$.price")
-        message="every item must have a price";
+```json
+{
+  "title": "item checks",
+  "patterns": [
+    {
+      "name": "items",
+      "rules": [
+        {
+          "context": "$.items[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.name" },
+              "message": "every item must have a name"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.price" },
+              "message": "every item must have a price"
+            }
+          ]
+        }
+      ]
     }
-  }
+  ]
 }
 ```
 
 ```
-$ scheck validate etc/examples/array-context-pass.json --rules etc/examples/array-context.scheck
+$ scheck validate etc/examples/array-context-pass.json --rules etc/examples/array-context.json
 OK: all checks passed
 
-$ scheck validate etc/examples/array-context-fail.json --rules etc/examples/array-context.scheck
+$ scheck validate etc/examples/array-context-fail.json --rules etc/examples/array-context.json
 [error] items at $.items[*]: every item must have a price
 [error] items at $.items[*]: every item must have a name
 
@@ -244,28 +362,47 @@ $ scheck validate etc/examples/array-context-fail.json --rules etc/examples/arra
 
 Control how findings are classified: `fatal`, `error` (default), `warning`, `info`.
 
-**Rules:** [`severity-levels.scheck`](../etc/examples/severity-levels.scheck)
+**Rules:** [`severity-levels.json`](../etc/examples/severity-levels.json)
+| [DSL](../etc/examples/severity-levels.scheck)
 
-```
-schema "severity demo" {
-  pattern "checks" {
-    rule context="$" {
-      assert exists("$.id")
-        message="id is required"
-        severity=fatal;
-
-      assert exists("$.name")
-        message="name is required";
-
-      assert exists("$.description")
-        message="description is recommended"
-        severity=warning;
-
-      assert exists("$.metadata")
-        message="metadata is optional"
-        severity=info;
+```json
+{
+  "title": "severity demo",
+  "patterns": [
+    {
+      "name": "checks",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.id" },
+              "message": "id is required",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.name" },
+              "message": "name is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.description" },
+              "message": "description is recommended",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.metadata" },
+              "message": "metadata is optional",
+              "severity": "info"
+            }
+          ]
+        }
+      ]
     }
-  }
+  ]
 }
 ```
 
@@ -273,10 +410,10 @@ schema "severity demo" {
 reported but do not fail validation.
 
 ```
-$ scheck validate etc/examples/severity-levels-pass.json --rules etc/examples/severity-levels.scheck
+$ scheck validate etc/examples/severity-levels-pass.json --rules etc/examples/severity-levels.json
 OK: all checks passed
 
-$ scheck validate etc/examples/severity-levels-fail.json --rules etc/examples/severity-levels.scheck
+$ scheck validate etc/examples/severity-levels-fail.json --rules etc/examples/severity-levels.json
 [fatal] checks at $: id is required
 [warning] checks at $: description is recommended
 [info] checks at $: metadata is optional
@@ -291,22 +428,38 @@ $ scheck validate etc/examples/severity-levels-fail.json --rules etc/examples/se
 `assert` fires on failure (test must be true). `report` fires on
 success (surfaces a positive finding when test is true).
 
-```
-schema "mixed checks" {
-  pattern "audit" {
-    rule context="$" {
-      assert exists("$.id")
-        message="id required";
-
-      report exists("$.metadata")
-        message="document has metadata"
-        severity=info;
-
-      report exists("$.deprecated")
-        message="document is marked deprecated"
-        severity=warning;
+```json
+{
+  "title": "mixed checks",
+  "patterns": [
+    {
+      "name": "audit",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.id" },
+              "message": "id required"
+            },
+            {
+              "kind": "report",
+              "test": { "type": "exists", "path": "$.metadata" },
+              "message": "document has metadata",
+              "severity": "info"
+            },
+            {
+              "kind": "report",
+              "test": { "type": "exists", "path": "$.deprecated" },
+              "message": "document is marked deprecated",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
     }
-  }
+  ]
 }
 ```
 
@@ -319,50 +472,65 @@ Given `{"id": "1", "metadata": {}}`, validation passes and reports:
 
 Group patterns into named phases and run subsets selectively.
 
-**Rules:** [`phases.scheck`](../etc/examples/phases.scheck)
+**Rules:** [`phases.json`](../etc/examples/phases.json)
+| [DSL](../etc/examples/phases.scheck)
 
-```
-schema "phased checks" {
-  default_phase "quick";
-
-  phase "quick" {
-    active "required";
-  }
-
-  phase "full" {
-    active "required";
-    active "format";
-  }
-
-  pattern "required" {
-    rule context="$" {
-      assert exists("$.id")
-        message="id required";
+```json
+{
+  "title": "phased checks",
+  "default_phase": "quick",
+  "phases": [
+    { "name": "quick", "active_patterns": ["required"] },
+    { "name": "full", "active_patterns": ["required", "format"] }
+  ],
+  "patterns": [
+    {
+      "name": "required",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.id" },
+              "message": "id required"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "format",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "matches", "path": "$.id", "pattern": "^[A-Z]" },
+              "message": "id must start uppercase"
+            }
+          ]
+        }
+      ]
     }
-  }
-
-  pattern "format" {
-    rule context="$" {
-      assert matches("$.id", "^[A-Z]")
-        message="id must start uppercase";
-    }
-  }
+  ]
 }
 ```
 
 ```
-$ scheck validate etc/examples/phases-pass.json --rules etc/examples/phases.scheck
+$ scheck validate etc/examples/phases-pass.json --rules etc/examples/phases.json
 OK: all checks passed
 
-$ scheck validate etc/examples/phases-fail.json --rules etc/examples/phases.scheck
+$ scheck validate etc/examples/phases-fail.json --rules etc/examples/phases.json
 OK: all checks passed
 
-$ scheck validate etc/examples/phases-fail.json --rules etc/examples/phases.scheck --phase full
+$ scheck validate etc/examples/phases-fail.json --rules etc/examples/phases.json --phase full
 [error] format at $: id must start uppercase
 
 1 error(s), 0 warning(s), 0 info(s)
 
-$ scheck validate etc/examples/phases-fail.json --rules etc/examples/phases.scheck --phase all
+$ scheck validate etc/examples/phases-fail.json --rules etc/examples/phases.json --phase all
 [error] format at $: id must start uppercase
 
 1 error(s), 0 warning(s), 0 info(s)
@@ -374,26 +542,38 @@ $ scheck validate etc/examples/phases-fail.json --rules etc/examples/phases.sche
 
 Attach reusable explanations to checks.
 
-**Rules:** [`diagnostics.scheck`](../etc/examples/diagnostics.scheck)
+**Rules:** [`diagnostics.json`](../etc/examples/diagnostics.json)
+| [DSL](../etc/examples/diagnostics.scheck)
 
-```
-schema "with diagnostics" {
-  diagnostics {
-    diagnostic "spec-4.2" "See CSAF 2.0 spec, section 4.2";
-  }
-
-  pattern "spec-compliance" {
-    rule context="$" {
-      assert exists("$.document")
-        message="document root required"
-        diagnostic="spec-4.2";
+```json
+{
+  "title": "with diagnostics",
+  "diagnostics": [
+    { "id": "spec-4.2", "message": "See CSAF 2.0 spec, section 4.2" }
+  ],
+  "patterns": [
+    {
+      "name": "spec-compliance",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.document" },
+              "message": "document root required",
+              "diagnostics": ["spec-4.2"]
+            }
+          ]
+        }
+      ]
     }
-  }
+  ]
 }
 ```
 
 ```
-$ scheck validate etc/examples/diagnostics-fail.json --rules etc/examples/diagnostics.scheck
+$ scheck validate etc/examples/diagnostics-fail.json --rules etc/examples/diagnostics.json
 [error] spec-compliance at $: document root required
        See CSAF 2.0 spec, section 4.2
 
@@ -406,25 +586,40 @@ $ scheck validate etc/examples/diagnostics-fail.json --rules etc/examples/diagno
 
 Categorize checks with flags for filtering and reporting.
 
-```
-schema "flagged checks" {
-  pattern "security" {
-    rule context="$" {
-      assert not_exists("$.password")
-        message="must not contain password"
-        flag="security";
-      assert exists("$.auth_token")
-        message="auth token required"
-        flag="security";
+```json
+{
+  "title": "flagged checks",
+  "patterns": [
+    {
+      "name": "security",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "not_exists", "path": "$.password" },
+              "message": "must not contain password",
+              "flag": "security"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.auth_token" },
+              "message": "auth token required",
+              "flag": "security"
+            }
+          ]
+        }
+      ]
     }
-  }
+  ]
 }
 ```
 
 Flags appear in JSON output:
 
 ```
-$ scheck validate doc.json --rules flagged.scheck --format json
+$ scheck validate doc.json --rules flagged.json --format json
 ```
 
 ---
@@ -433,13 +628,14 @@ $ scheck validate doc.json --rules flagged.scheck --format json
 
 scheck validates YAML documents identically to JSON. Format is auto-detected.
 
-**Rules:** [`yaml-input.scheck`](../etc/examples/yaml-input.scheck)
+**Rules:** [`yaml-input.json`](../etc/examples/yaml-input.json)
+| [DSL](../etc/examples/yaml-input.scheck)
 
 ```
-$ scheck validate etc/examples/yaml-input-pass.yaml --rules etc/examples/yaml-input.scheck
+$ scheck validate etc/examples/yaml-input-pass.yaml --rules etc/examples/yaml-input.json
 OK: all checks passed
 
-$ scheck validate etc/examples/yaml-input-fail.yaml --rules etc/examples/yaml-input.scheck
+$ scheck validate etc/examples/yaml-input-fail.yaml --rules etc/examples/yaml-input.json
 [error] required at $: version is required
 
 1 error(s), 0 warning(s), 0 info(s)
@@ -452,8 +648,8 @@ $ scheck validate etc/examples/yaml-input-fail.yaml --rules etc/examples/yaml-in
 Use `scheck check` to validate a rule file without running it against a document:
 
 ```
-$ scheck check etc/examples/csaf-advisory.scheck
-OK: schema "CSAF Advisory Checks" — 3 pattern(s), 2 phase(s) [dsl]
+$ scheck check etc/examples/csaf-advisory.json
+OK: schema "CSAF Advisory Checks" — 3 pattern(s), 2 phase(s) [json]
 ```
 
 ---
@@ -464,7 +660,7 @@ Get structured SVRL-inspired JSON output for programmatic consumption:
 
 ```
 $ scheck validate etc/examples/required-fields-fail.json \
-    --rules etc/examples/required-fields.scheck \
+    --rules etc/examples/required-fields.json \
     --format json
 ```
 
@@ -512,15 +708,16 @@ let json = serde_json::to_string_pretty(&schema)?;
 
 A complete example validating a CSAF security advisory.
 
-**Rules:** [`csaf-advisory.scheck`](../etc/examples/csaf-advisory.scheck)
+**Rules:** [`csaf-advisory.json`](../etc/examples/csaf-advisory.json)
+| [DSL](../etc/examples/csaf-advisory.scheck)
 
 ```
 $ scheck validate etc/examples/csaf-advisory-pass.json \
-    --rules etc/examples/csaf-advisory.scheck --phase full
+    --rules etc/examples/csaf-advisory.json --phase full
 OK: all checks passed
 
 $ scheck validate etc/examples/csaf-advisory-fail.json \
-    --rules etc/examples/csaf-advisory.scheck --phase full
+    --rules etc/examples/csaf-advisory.json --phase full
 [error] required-fields at $: tracking ID is required
 [error] cve-format at $..vulnerabilities[*]: CVE ID must match standard format
 
@@ -531,5 +728,5 @@ With JSON output:
 
 ```
 $ scheck validate etc/examples/csaf-advisory-fail.json \
-    --rules etc/examples/csaf-advisory.scheck --phase full --format json
+    --rules etc/examples/csaf-advisory.json --phase full --format json
 ```

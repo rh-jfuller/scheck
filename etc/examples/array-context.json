@@ -1,0 +1,25 @@
+{
+  "title": "item checks",
+  "patterns": [
+    {
+      "name": "items",
+      "rules": [
+        {
+          "context": "$.items[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.name" },
+              "message": "every item must have a name"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.price" },
+              "message": "every item must have a price"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

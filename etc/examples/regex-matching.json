@@ -1,0 +1,24 @@
+{
+  "title": "format checks",
+  "patterns": [
+    {
+      "name": "identifiers",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.cve",
+                "pattern": "^CVE-\\d{4}-\\d{4,}$"
+              },
+              "message": "CVE ID must match standard format"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

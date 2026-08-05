@@ -1,0 +1,24 @@
+{
+  "title": "with diagnostics",
+  "diagnostics": [
+    { "id": "spec-4.2", "message": "See CSAF 2.0 spec, section 4.2" }
+  ],
+  "patterns": [
+    {
+      "name": "spec-compliance",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.document" },
+              "message": "document root required",
+              "diagnostics": ["spec-4.2"]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

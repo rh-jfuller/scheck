@@ -1,0 +1,25 @@
+{
+  "title": "config checks",
+  "patterns": [
+    {
+      "name": "required",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.name" },
+              "message": "name is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.version" },
+              "message": "version is required"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

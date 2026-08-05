@@ -251,6 +251,30 @@ scheck uses [JSONPath (RFC 9535)](https://www.rfc-editor.org/rfc/rfc9535):
 
 ## Install
 
+### Pre-built binaries
+
+Download from [GitHub Releases](https://github.com/rh-jfuller/scheck/releases):
+
+```
+# Linux x86_64 (static musl)
+curl -LO https://github.com/rh-jfuller/scheck/releases/latest/download/scheck-<version>-x86_64-unknown-linux-musl.tar.gz
+tar xzf scheck-*-x86_64-unknown-linux-musl.tar.gz
+sudo install scheck /usr/local/bin/
+
+# macOS (Apple Silicon)
+curl -LO https://github.com/rh-jfuller/scheck/releases/latest/download/scheck-<version>-aarch64-apple-darwin.tar.gz
+tar xzf scheck-*-aarch64-apple-darwin.tar.gz
+sudo install scheck /usr/local/bin/
+```
+
+### RPM
+
+```
+sudo rpm -i https://github.com/rh-jfuller/scheck/releases/latest/download/scheck-<version>-1.x86_64.rpm
+```
+
+### From source
+
 ```
 cargo install scheck
 ```

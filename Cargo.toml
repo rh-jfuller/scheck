@@ -69,3 +69,10 @@ strip = true
 [profile.release-wasm]
 inherits = "release"
 opt-level = "s"
+
+[package.metadata.generate-rpm]
+assets = [
+  { source = "target/release/scheck", dest = "/usr/bin/scheck", mode = "0755" },
+  { source = "LICENSE", dest = "/usr/share/licenses/scheck/LICENSE", mode = "0644", doc = true },
+  { source = "README.md", dest = "/usr/share/doc/scheck/README.md", mode = "0644", doc = true },
+]

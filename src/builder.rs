@@ -175,6 +175,15 @@ pub fn is_iso_datetime(path: &str) -> Predicate {
     }
 }
 
+/// Value at path must be a CPE identifier (v2.2 or v2.3).
+#[must_use]
+pub fn is_cpe(path: &str) -> Predicate {
+    Predicate::Named {
+        name: "cpe".to_owned(),
+        path: path.to_owned(),
+    }
+}
+
 /// Named test type by string name and path.
 #[must_use]
 pub fn named(name: &str, path: &str) -> Predicate {

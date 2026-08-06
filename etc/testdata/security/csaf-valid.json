@@ -2,6 +2,7 @@
   "document": {
     "category": "csaf_security_advisory",
     "csaf_version": "2.0",
+    "lang": "en",
     "title": "Example Security Advisory",
     "publisher": {
       "category": "vendor",
@@ -28,10 +29,41 @@
       "version": "2"
     }
   },
+  "product_tree": {
+    "branches": [
+      {
+        "category": "vendor",
+        "name": "Example Corp",
+        "branches": [
+          {
+            "category": "product_name",
+            "name": "Example Library",
+            "branches": [
+              {
+                "category": "product_version",
+                "name": "1.0.0",
+                "product": {
+                  "product_id": "EXAMPLE-LIB-1.0.0",
+                  "name": "Example Library 1.0.0"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
   "vulnerabilities": [
     {
       "cve": "CVE-2024-12345",
-      "title": "Buffer overflow in example library"
+      "title": "Buffer overflow in example library",
+      "remediations": [
+        {
+          "category": "vendor_fix",
+          "details": "Update to version 2.0.0",
+          "product_ids": ["EXAMPLE-LIB-1.0.0"]
+        }
+      ]
     }
   ]
 }

@@ -77,6 +77,16 @@ enum Command {
         )]
         rule_format: Option<String>,
     },
+
+    /// Convert rules from another format to scheck JSON
+    Convert {
+        /// Input rule file to convert
+        input: String,
+
+        /// Source format
+        #[arg(long, value_parser = ["spectral"])]
+        from: String,
+    },
 }
 
 fn main() -> ExitCode {
@@ -126,6 +136,7 @@ fn run(cli: &Cli) -> Result<String, String> {
             format,
         ),
         Command::Check { rules, rule_format } => run_check(rules, rule_format.as_deref()),
+        Command::Convert { input, from } => run_convert(input, from),
     }
 }
 
@@ -213,4 +224,33 @@ fn run_check(rules_path: &str, rule_format: Option<&str>) -> Result<String, Stri
         schema.phases.len(),
         fmt,
     ))
+}
+
+#[cfg(feature = "cli")]
+fn run_convert(input_path: &str, from: &str) -> Result<String, String> {
+    use std::fmt::Write;
+
+    let src = read_file_bounded(input_path)?;
+
+    match from {
+        "spectral" => {
+            let result = scheck::spectral::convert_spectral(&src)?;
+            let mut output = String::new();
+
+            if !result.skipped.is_empty() {
+                for (name, reason) in &result.skipped {
+                    let _ = writeln!(output, "# skipped: {name} ({reason})");
+                }
+                output.push('\n');
+            }
+
+            let json = serde_json::to_string_pretty(&result.schema)
+                .map_err(|e| format!("JSON serialization error: {e}"))?;
+            output.push_str(&json);
+            output.push('\n');
+
+            Ok(output)
+        }
+        other => Err(format!("unknown source format: {other}")),
+    }
 }

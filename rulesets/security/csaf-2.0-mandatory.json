@@ -1,6 +1,6 @@
 {
   "title": "CSAF 2.0 Mandatory Checks",
-  "description": "Structural checks from CSAF 2.0 section 6.1. Covers required fields, format constraints, and status consistency. Cross-reference uniqueness checks (6.1.1-6.1.5, 6.1.23-6.1.25) and CVSS computation checks (6.1.8-6.1.10) require dedicated tooling beyond scheck.",
+  "description": "Structural checks from CSAF 2.0 section 6.1, derived from csaf-rs test definitions. Covers required fields, format constraints, conditional requirements, and profile tests. Cross-reference uniqueness (6.1.1-6.1.5, 6.1.22-6.1.25), CVSS computation (6.1.8-6.1.10), CWE lookup (6.1.11), sorting (6.1.14, 6.1.16, 6.1.21), and recursion depth (6.1.34) require csaf-rs or dedicated tooling.",
   "default_phase": "structural",
   "phases": [
     {
@@ -21,7 +21,15 @@
         "vulnerability-fields",
         "tracking-format",
         "document-category",
-        "revision-history"
+        "revision-history",
+        "6.1.12-language",
+        "6.1.13-purl",
+        "6.1.15-translator",
+        "6.1.29-remediation-product-ref",
+        "6.1.31-version-range",
+        "6.1.32-flag-product-ref",
+        "6.1.27-profile-vulnerabilities",
+        "6.1.27-profile-product-tree"
       ]
     }
   ],
@@ -29,8 +37,15 @@
     { "id": "csaf-3.1", "message": "CSAF 2.0 spec section 3.1 — document-level properties" },
     { "id": "csaf-3.1.7", "message": "CSAF 2.0 spec section 3.1.7 — tracking" },
     { "id": "csaf-3.1.8", "message": "CSAF 2.0 spec section 3.1.8 — publisher" },
-    { "id": "csaf-6.1.26", "message": "CSAF 2.0 test 6.1.26 — prohibited document category name" },
-    { "id": "csaf-6.1.14", "message": "CSAF 2.0 test 6.1.14 — revision history" }
+    { "id": "csaf-6.1.12", "message": "CSAF 2.0 test 6.1.12 — language tag format" },
+    { "id": "csaf-6.1.13", "message": "CSAF 2.0 test 6.1.13 — PURL format" },
+    { "id": "csaf-6.1.14", "message": "CSAF 2.0 test 6.1.14 — revision history fields" },
+    { "id": "csaf-6.1.15", "message": "CSAF 2.0 test 6.1.15 — translator must have source_lang" },
+    { "id": "csaf-6.1.26", "message": "CSAF 2.0 test 6.1.26 — document category" },
+    { "id": "csaf-6.1.27", "message": "CSAF 2.0 test 6.1.27 — profile-specific tests" },
+    { "id": "csaf-6.1.29", "message": "CSAF 2.0 test 6.1.29 — remediation without product reference" },
+    { "id": "csaf-6.1.31", "message": "CSAF 2.0 test 6.1.31 — version range in product_version branch" },
+    { "id": "csaf-6.1.32", "message": "CSAF 2.0 test 6.1.32 — flag without product reference" }
   ],
   "patterns": [
     {
@@ -265,15 +280,8 @@
               "kind": "assert",
               "test": {
                 "type": "or",
-                "left": {
-                  "type": "not_exists",
-                  "path": "$.cve"
-                },
-                "right": {
-                  "type": "matches",
-                  "path": "$.cve",
-                  "pattern": "^CVE-[0-9]{4}-[0-9]{4,}$"
-                }
+                "left": { "type": "not_exists", "path": "$.cve" },
+                "right": { "type": "named", "name": "cve_id", "path": "$.cve" }
               },
               "message": "cve must match CVE-YYYY-NNNNN+ format"
             }
@@ -305,6 +313,251 @@
               "test": { "type": "exists", "path": "$.summary" },
               "message": "revision_history entry must have summary",
               "diagnostics": ["csaf-6.1.14"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6.1.12-language",
+      "title": "Language tags must be well-formed (6.1.12)",
+      "rules": [
+        {
+          "context": "$.document",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.lang" },
+                "right": {
+                  "type": "matches",
+                  "path": "$.lang",
+                  "pattern": "^[a-zA-Z]{2,3}(-[a-zA-Z0-9]+)*$"
+                }
+              },
+              "message": "document.lang must be a valid language tag if present",
+              "diagnostics": ["csaf-6.1.12"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.source_lang" },
+                "right": {
+                  "type": "matches",
+                  "path": "$.source_lang",
+                  "pattern": "^[a-zA-Z]{2,3}(-[a-zA-Z0-9]+)*$"
+                }
+              },
+              "message": "document.source_lang must be a valid language tag if present",
+              "diagnostics": ["csaf-6.1.12"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6.1.13-purl",
+      "title": "PURLs must be well-formed (6.1.13)",
+      "rules": [
+        {
+          "context": "$..product_tree..product_identification_helper",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": { "type": "named", "name": "purl", "path": "$.purl" }
+              },
+              "message": "purl must use pkg: scheme",
+              "diagnostics": ["csaf-6.1.13"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6.1.15-translator",
+      "title": "Translator must have source_lang (6.1.15)",
+      "rules": [
+        {
+          "context": "$.document",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "not",
+                  "inner": {
+                    "type": "equals",
+                    "path": "$.publisher.category",
+                    "value": "translator"
+                  }
+                },
+                "right": { "type": "exists", "path": "$.source_lang" }
+              },
+              "message": "publisher category 'translator' requires document.source_lang",
+              "diagnostics": ["csaf-6.1.15"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6.1.29-remediation-product-ref",
+      "title": "Remediation must reference products (6.1.29)",
+      "rules": [
+        {
+          "context": "$..vulnerabilities[*]..remediations[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "exists", "path": "$.product_ids" },
+                "right": { "type": "exists", "path": "$.group_ids" }
+              },
+              "message": "remediation must reference product_ids or group_ids",
+              "diagnostics": ["csaf-6.1.29"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.category" },
+              "message": "remediation must have category"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.details" },
+              "message": "remediation must have details"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.category",
+                "pattern": "^(mitigation|no_fix_planned|none_available|vendor_fix|workaround)$"
+              },
+              "message": "remediation.category must be a valid value"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6.1.31-version-range",
+      "title": "Product version branches must not contain version ranges (6.1.31)",
+      "rules": [
+        {
+          "context": "$..product_tree..branches[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "not",
+                  "inner": {
+                    "type": "equals",
+                    "path": "$.category",
+                    "value": "product_version"
+                  }
+                },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.name",
+                    "pattern": "(<=|>=|<[^=]|>[^=])"
+                  }
+                }
+              },
+              "message": "product_version branch name must not contain version range operators (<, >, <=, >=)",
+              "diagnostics": ["csaf-6.1.31"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6.1.32-flag-product-ref",
+      "title": "Flag must reference products (6.1.32)",
+      "rules": [
+        {
+          "context": "$..vulnerabilities[*]..flags[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "exists", "path": "$.product_ids" },
+                "right": { "type": "exists", "path": "$.group_ids" }
+              },
+              "message": "flag must reference product_ids or group_ids",
+              "diagnostics": ["csaf-6.1.32"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6.1.27-profile-vulnerabilities",
+      "title": "Profile tests: csaf_security_advisory and csaf_vex require vulnerabilities (6.1.27)",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.document.category",
+                    "pattern": "^(csaf_security_advisory|csaf_vex)$"
+                  }
+                },
+                "right": {
+                  "type": "count",
+                  "path": "$.vulnerabilities[*]",
+                  "cmp": ">=",
+                  "expected": 1
+                }
+              },
+              "message": "csaf_security_advisory and csaf_vex profiles require at least one vulnerability",
+              "diagnostics": ["csaf-6.1.27"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6.1.27-profile-product-tree",
+      "title": "Profile tests: csaf_security_advisory and csaf_vex require product_tree (6.1.27)",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.document.category",
+                    "pattern": "^(csaf_security_advisory|csaf_vex)$"
+                  }
+                },
+                "right": { "type": "exists", "path": "$.product_tree" }
+              },
+              "message": "csaf_security_advisory and csaf_vex profiles require product_tree",
+              "diagnostics": ["csaf-6.1.27"]
             }
           ]
         }

@@ -1,0 +1,31 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "serialNumber": "urn:uuid:550e8400-e29b-41d4-a716-446655440000",
+  "metadata": {
+    "timestamp": "2024-01-15T10:00:00Z",
+    "tools": [{ "name": "scheck-test", "version": "1.0.0" }],
+    "authors": [{ "name": "Test Author" }],
+    "component": {
+      "type": "application",
+      "name": "my-app",
+      "version": "1.0.0"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "serde",
+      "version": "1.0.203",
+      "purl": "pkg:cargo/serde@1.0.203",
+      "cpe": "cpe:2.3:a:serde_project:serde:1.0.203:*:*:*:*:rust:*:*",
+      "supplier": { "name": "Serde Project" },
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "hashes": [{ "alg": "SHA-256", "content": "abc123" }]
+    }
+  ],
+  "dependencies": [
+    { "ref": "my-app", "dependsOn": ["serde"] }
+  ]
+}

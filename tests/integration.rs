@@ -1302,6 +1302,38 @@ fn osv_ruleset_invalid_document() {
     assert!(!report.is_ok());
 }
 
+#[test]
+fn cyclonedx_quality_valid() {
+    let schema = load_ruleset("cyclonedx-quality");
+    let doc = scheck::load(&load_testdata("cyclonedx-quality-valid")).unwrap();
+    let report = scheck::validate_phase(&schema, &doc, "quality");
+    assert!(report.is_ok(), "expected OK, got:\n{}", report.to_text());
+}
+
+#[test]
+fn cyclonedx_quality_invalid() {
+    let schema = load_ruleset("cyclonedx-quality");
+    let doc = scheck::load(&load_testdata("cyclonedx-quality-invalid")).unwrap();
+    let report = scheck::validate_phase(&schema, &doc, "quality");
+    assert!(!report.is_ok());
+}
+
+#[test]
+fn spdx_ntia_valid() {
+    let schema = load_ruleset("spdx-ntia");
+    let doc = scheck::load(&load_testdata("spdx-ntia-valid")).unwrap();
+    let report = scheck::validate_phase(&schema, &doc, "quality");
+    assert!(report.is_ok(), "expected OK, got:\n{}", report.to_text());
+}
+
+#[test]
+fn spdx_ntia_invalid() {
+    let schema = load_ruleset("spdx-ntia");
+    let doc = scheck::load(&load_testdata("spdx-ntia-invalid")).unwrap();
+    let report = scheck::validate_phase(&schema, &doc, "quality");
+    assert!(!report.is_ok());
+}
+
 // -- API rulesets ----------------------------------------------------
 
 #[test]
@@ -1730,4 +1762,37 @@ fn partial_validation_single_object() {
 
     let report = scheck::validate_context(&s, &doc, "$.metadata", "");
     assert!(report.is_ok(), "expected OK, got:\n{}", report.to_text());
+}
+
+// -- Spectral conversion ---------------------------------------------
+
+#[test]
+fn spectral_convert_and_validate() {
+    let spectral_src = load_testdata_from("api", "spectral-sample");
+    let result = scheck::spectral::convert_spectral(&spectral_src).unwrap();
+
+    // 5 convertible rules, 1 skipped custom function
+    assert_eq!(result.schema.patterns.len(), 5);
+    assert_eq!(result.skipped.len(), 1);
+    assert_eq!(result.skipped[0].0, "custom-function-rule");
+
+    // Converted schema round-trips through JSON
+    let json = serde_json::to_string(&result.schema).unwrap();
+    let schema: scheck::Schema = serde_json::from_str(&json).unwrap();
+
+    // Validate a passing document
+    let doc = r#"{
+        "info": {
+            "contact": { "name": "Alice" },
+            "description": "An API"
+        }
+    }"#;
+    let report = scheck::check_json(&json, doc).unwrap();
+    assert!(report.is_ok(), "expected OK, got:\n{}", report.to_text());
+
+    // Validate a failing document
+    let report = scheck::check_json(&json, r"{}").unwrap();
+    assert!(!report.is_ok());
+    assert!(report.error_count() >= 1);
+    assert_eq!(schema.patterns.len(), 5);
 }

@@ -220,6 +220,7 @@ pub fn named_pattern(name: &str) -> Option<&'static str> {
         "uuid" => Some(r"(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"),
         "iso_date" | "iso-date" => Some(r"^\d{4}-\d{2}-\d{2}$"),
         "iso_datetime" | "iso-datetime" => Some(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}"),
+        "cpe" => Some(r"^cpe:2\.[23]:[aohe\*\-]:"),
         _ => None,
     }
 }

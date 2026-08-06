@@ -6,6 +6,7 @@ mod parser;
 mod report;
 mod rule;
 mod schematron;
+pub mod spectral;
 mod validated;
 
 pub use document::{Document, DocumentError, from_json, from_yaml, load};

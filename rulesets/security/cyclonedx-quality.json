@@ -1,0 +1,243 @@
+{
+  "title": "CycloneDX SBOM Quality",
+  "description": "Quality and completeness checks for CycloneDX SBOMs, derived from sbomqs, sbom-scorecard, and NTIA minimum element criteria. Complements cyclonedx-min.json with deeper component-level quality checks.",
+  "default_phase": "ntia",
+  "phases": [
+    {
+      "name": "ntia",
+      "active_patterns": [
+        "ntia-sbom-fields",
+        "ntia-component-fields"
+      ]
+    },
+    {
+      "name": "quality",
+      "active_patterns": [
+        "ntia-sbom-fields",
+        "ntia-component-fields",
+        "sbom-metadata-quality",
+        "component-ids",
+        "component-licenses",
+        "component-checksums"
+      ]
+    }
+  ],
+  "patterns": [
+    {
+      "name": "ntia-sbom-fields",
+      "title": "NTIA minimum elements: SBOM level",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.bomFormat" },
+              "message": "bomFormat is required",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.specVersion" },
+              "message": "specVersion is required (NTIA: SBOM data format)",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.metadata.timestamp" },
+              "message": "metadata.timestamp is required (NTIA: timestamp)"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "exists", "path": "$.metadata.authors" },
+                "right": { "type": "exists", "path": "$.metadata.tools" }
+              },
+              "message": "metadata must have authors or tools (NTIA: SBOM author)"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "count",
+                "path": "$.components[*]",
+                "cmp": ">=",
+                "expected": 1
+              },
+              "message": "SBOM must have at least one component",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ntia-component-fields",
+      "title": "NTIA minimum elements: component level",
+      "rules": [
+        {
+          "context": "$.components[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.name" },
+              "message": "component.name is required (NTIA: component name)"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.version" },
+              "message": "component.version is required (NTIA: component version)",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "exists", "path": "$.purl" },
+                "right": { "type": "exists", "path": "$.cpe" }
+              },
+              "message": "component must have purl or cpe (NTIA: unique identifier)",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.supplier" },
+              "message": "component.supplier is required (NTIA: supplier name)",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sbom-metadata-quality",
+      "title": "SBOM metadata quality (sbomqs/scorecard)",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.metadata.component" },
+              "message": "metadata should identify primary component (sbomqs: sbom_with_primary_component)",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.serialNumber" },
+              "message": "SBOM should have serialNumber for traceability (sbomqs: sbom_with_uri)",
+              "severity": "info"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.dependencies" },
+              "message": "SBOM should include dependency graph (sbomqs: sbom_dependencies)",
+              "severity": "info"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.metadata.timestamp" },
+                "right": { "type": "named", "name": "iso_datetime", "path": "$.metadata.timestamp" }
+              },
+              "message": "metadata.timestamp must be ISO 8601 datetime"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "component-ids",
+      "title": "Component identification quality (sbomqs/scorecard)",
+      "rules": [
+        {
+          "context": "$.components[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": { "type": "named", "name": "purl", "path": "$.purl" }
+              },
+              "message": "purl must use pkg: scheme if present"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.cpe" },
+                "right": { "type": "named", "name": "cpe", "path": "$.cpe" }
+              },
+              "message": "cpe must be valid CPE 2.3 format if present"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.version" },
+                "right": {
+                  "type": "matches",
+                  "path": "$.version",
+                  "pattern": "\\S"
+                }
+              },
+              "message": "component.version must not be empty if present"
+            },
+            {
+              "kind": "report",
+              "test": {
+                "type": "and",
+                "left": { "type": "exists", "path": "$.purl" },
+                "right": { "type": "exists", "path": "$.cpe" }
+              },
+              "message": "component has both PURL and CPE (sbomqs: comp_with_multi_vuln_lookup_id)",
+              "severity": "info"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "component-licenses",
+      "title": "Component license quality (sbomqs/scorecard)",
+      "rules": [
+        {
+          "context": "$.components[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.licenses" },
+              "message": "component should have license information (sbomqs: comp_with_licenses)",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.type" },
+              "message": "component should have type/purpose (sbomqs: comp_with_primary_purpose)",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "component-checksums",
+      "title": "Component integrity (sbomqs)",
+      "rules": [
+        {
+          "context": "$.components[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.hashes" },
+              "message": "component should have hashes for integrity verification (sbomqs: comp_with_checksums)",
+              "severity": "info"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

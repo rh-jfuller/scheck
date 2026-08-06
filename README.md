@@ -128,7 +128,7 @@ JSON Schema, XML Schema, YAML validators -- they tell you whether a document is
 *structurally* correct. The right types in the right places. But they cannot tell
 you whether the data makes *sense*.
 
-Real-world data has constraints that cut across structure:
+Real-world data has constraints that cut across structure - security data for example:
 
 - A vulnerability advisory **must** contain a CVE ID, and that ID **must** match `CVE-YYYY-NNNNN+`.
 - If a remediation references a vulnerability, that vulnerability **must** exist in the document.
@@ -460,15 +460,6 @@ let report = scheck::validate_json(&schema, r#"{"name": "Alice"}"#)?;
 let report = scheck::check_json(rules_json, doc_json)?;
 ```
 
-## Why rules-as-data?
-
-- **Portable** -- JSON rules work in any language. No Rust required.
-- **Auditable** -- every rule has a human message. Non-developers can review them.
-- **Composable** -- combine rule files, activate phases per environment.
-- **Declarative** -- what to check, not how. The engine handles traversal.
-- **Evolvable** -- add a rule, don't touch the validator code.
-- **Round-trip** -- build in Rust, export as JSON, import elsewhere, and back.
-
 ## License
 
-MIT
+[MIT](LICENSE)

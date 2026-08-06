@@ -1,0 +1,166 @@
+{
+  "title": "Red Hat CycloneDX SBOM Conventions",
+  "description": "Red Hat-specific conventions for CycloneDX 1.6 SBOMs, derived from https://github.com/RedHatProductSecurity/security-data-guidelines.",
+  "diagnostics": [
+    { "id": "rh-sbom", "message": "Red Hat Security Data Guidelines — sbom/ section" },
+    { "id": "rh-purl", "message": "Red Hat PURL conventions — purl.md" }
+  ],
+  "patterns": [
+    {
+      "name": "rh-bom-structure",
+      "title": "BOM structure must match Red Hat conventions",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "equals",
+                "path": "$.bomFormat",
+                "value": "CycloneDX"
+              },
+              "message": "bomFormat must be CycloneDX",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "equals",
+                "path": "$.specVersion",
+                "value": "1.6"
+              },
+              "message": "specVersion must be 1.6",
+              "severity": "fatal",
+              "diagnostics": ["rh-sbom"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.serialNumber" },
+              "message": "serialNumber is required",
+              "diagnostics": ["rh-sbom"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.serialNumber" },
+                "right": {
+                  "type": "matches",
+                  "path": "$.serialNumber",
+                  "pattern": "^urn:uuid:"
+                }
+              },
+              "message": "serialNumber must be urn:uuid: format",
+              "diagnostics": ["rh-sbom"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rh-metadata",
+      "title": "Metadata must follow Red Hat conventions",
+      "rules": [
+        {
+          "context": "$.metadata",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.timestamp" },
+              "message": "metadata.timestamp is required"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.timestamp" },
+                "right": { "type": "named", "name": "iso_datetime", "path": "$.timestamp" }
+              },
+              "message": "metadata.timestamp must be ISO 8601 datetime"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.supplier" },
+              "message": "metadata.supplier is required",
+              "diagnostics": ["rh-sbom"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.component" },
+              "message": "metadata.component (root component) is required",
+              "diagnostics": ["rh-sbom"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.component.purl" },
+                "right": { "type": "named", "name": "purl", "path": "$.component.purl" }
+              },
+              "message": "root component purl must be valid",
+              "diagnostics": ["rh-purl"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rh-components",
+      "title": "Component fields must follow Red Hat conventions",
+      "rules": [
+        {
+          "context": "$.components[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.name" },
+              "message": "component.name is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.type" },
+              "message": "component.type is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.purl" },
+              "message": "component.purl is required",
+              "diagnostics": ["rh-sbom"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": { "type": "named", "name": "purl", "path": "$.purl" }
+              },
+              "message": "component purl must be valid",
+              "diagnostics": ["rh-purl"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": {
+                  "type": "matches",
+                  "path": "$.purl",
+                  "pattern": "^pkg:(rpm/redhat|oci|maven|generic)/"
+                }
+              },
+              "message": "purl namespace must be rpm/redhat, oci, maven, or generic",
+              "diagnostics": ["rh-purl"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.version" },
+              "message": "component.version is required",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

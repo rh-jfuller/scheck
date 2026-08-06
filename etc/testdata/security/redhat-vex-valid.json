@@ -1,0 +1,95 @@
+{
+  "document": {
+    "category": "csaf_vex",
+    "csaf_version": "2.0",
+    "title": "CVE-2024-12345",
+    "aggregate_severity": {
+      "namespace": "https://access.redhat.com/security/updates/classification/",
+      "text": "important"
+    },
+    "publisher": {
+      "category": "vendor",
+      "name": "Red Hat Product Security",
+      "namespace": "https://www.redhat.com",
+      "contact_details": "https://access.redhat.com/security/team/contact/",
+      "issuing_authority": "Red Hat Product Security is responsible for vulnerability handling across all Red Hat offerings."
+    },
+    "tracking": {
+      "id": "CVE-2024-12345",
+      "current_release_date": "2024-01-15T10:00:00Z",
+      "initial_release_date": "2024-01-10T10:00:00Z",
+      "revision_history": [
+        { "date": "2024-01-15T10:00:00Z", "number": "1", "summary": "Last generated version" }
+      ],
+      "status": "final",
+      "version": "1",
+      "generator": { "engine": { "name": "CSAF Generator", "version": "1.0.0" } }
+    }
+  },
+  "product_tree": {
+    "branches": [
+      {
+        "category": "vendor",
+        "name": "Red Hat",
+        "branches": [
+          {
+            "category": "product_name",
+            "name": "Red Hat Enterprise Linux 9",
+            "branches": [
+              {
+                "category": "product_version",
+                "name": "rhel-9.4.z",
+                "product": {
+                  "product_id": "rhel-9.4.z",
+                  "name": "Red Hat Enterprise Linux 9.4",
+                  "product_identification_helper": {
+                    "cpe": "cpe:/o:redhat:enterprise_linux:9",
+                    "purl": "pkg:rpm/redhat/rhel@9.4?arch=src"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "relationships": [
+      {
+        "category": "default_component_of",
+        "product_reference": "libxml2-0:2.9.13-10.el9.src",
+        "relates_to_product_reference": "rhel-9.4.z",
+        "full_product_name": {
+          "product_id": "rhel-9.4.z:libxml2-0:2.9.13-10.el9.src",
+          "name": "libxml2 as a component of RHEL 9.4"
+        }
+      }
+    ]
+  },
+  "vulnerabilities": [
+    {
+      "cve": "CVE-2024-12345",
+      "cwe": { "id": "CWE-79", "name": "Improper Neutralization of Input During Web Page Generation" },
+      "product_status": {
+        "fixed": ["rhel-9.4.z:libxml2-0:2.9.13-10.el9.src"],
+        "known_affected": ["rhel-9.4.z"]
+      },
+      "threats": [
+        { "category": "impact", "details": "Important" }
+      ],
+      "remediations": [
+        {
+          "category": "vendor_fix",
+          "details": "Update to libxml2-2.9.13-10.el9",
+          "product_ids": ["rhel-9.4.z:libxml2-0:2.9.13-10.el9.src"],
+          "url": "https://access.redhat.com/errata/RHSA-2024:1234"
+        }
+      ],
+      "scores": [
+        {
+          "cvss_v3": { "version": "3.1", "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N", "baseScore": 6.1, "baseSeverity": "MEDIUM" },
+          "products": ["rhel-9.4.z"]
+        }
+      ]
+    }
+  ]
+}

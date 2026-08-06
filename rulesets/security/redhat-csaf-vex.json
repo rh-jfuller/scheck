@@ -1,0 +1,498 @@
+{
+  "title": "Red Hat CSAF VEX Conventions",
+  "description": "Red Hat-specific conventions for CSAF VEX documents, derived from https://github.com/RedHatProductSecurity/security-data-guidelines. Validates publisher metadata, tracking format, product tree structure, vulnerability fields, severity taxonomy, and PURL conventions.",
+  "default_phase": "structural",
+  "phases": [
+    {
+      "name": "structural",
+      "active_patterns": [
+        "rh-document-metadata",
+        "rh-publisher",
+        "rh-tracking",
+        "rh-vulnerability-required"
+      ]
+    },
+    {
+      "name": "full",
+      "active_patterns": [
+        "rh-document-metadata",
+        "rh-publisher",
+        "rh-tracking",
+        "rh-vulnerability-required",
+        "rh-aggregate-severity",
+        "rh-product-tree",
+        "rh-vulnerability-details",
+        "rh-remediation",
+        "rh-purl-conventions"
+      ]
+    }
+  ],
+  "diagnostics": [
+    { "id": "rh-sdg", "message": "Red Hat Security Data Guidelines — https://github.com/RedHatProductSecurity/security-data-guidelines" },
+    { "id": "rh-purl", "message": "Red Hat PURL conventions — security-data-guidelines/purl.md" }
+  ],
+  "patterns": [
+    {
+      "name": "rh-document-metadata",
+      "title": "Document metadata must match Red Hat conventions",
+      "rules": [
+        {
+          "context": "$.document",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "equals",
+                "path": "$.category",
+                "value": "csaf_vex"
+              },
+              "message": "document.category must be csaf_vex",
+              "severity": "fatal",
+              "diagnostics": ["rh-sdg"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "equals",
+                "path": "$.csaf_version",
+                "value": "2.0"
+              },
+              "message": "document.csaf_version must be 2.0",
+              "severity": "fatal",
+              "diagnostics": ["rh-sdg"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.title" },
+              "message": "document.title is required",
+              "severity": "fatal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rh-publisher",
+      "title": "Publisher must be Red Hat Product Security",
+      "rules": [
+        {
+          "context": "$.document.publisher",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "equals",
+                "path": "$.category",
+                "value": "vendor"
+              },
+              "message": "publisher.category must be vendor",
+              "diagnostics": ["rh-sdg"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "equals",
+                "path": "$.name",
+                "value": "Red Hat Product Security"
+              },
+              "message": "publisher.name must be Red Hat Product Security",
+              "diagnostics": ["rh-sdg"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "equals",
+                "path": "$.namespace",
+                "value": "https://www.redhat.com"
+              },
+              "message": "publisher.namespace must be https://www.redhat.com",
+              "diagnostics": ["rh-sdg"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.contact_details" },
+              "message": "publisher.contact_details is required",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.issuing_authority" },
+              "message": "publisher.issuing_authority is required",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rh-tracking",
+      "title": "Tracking fields must follow Red Hat conventions",
+      "rules": [
+        {
+          "context": "$.document.tracking",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.id" },
+              "message": "tracking.id is required",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "equals",
+                "path": "$.status",
+                "value": "final"
+              },
+              "message": "tracking.status must be final for published VEX",
+              "diagnostics": ["rh-sdg"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.current_release_date" },
+              "message": "tracking.current_release_date is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.initial_release_date" },
+              "message": "tracking.initial_release_date is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.version" },
+              "message": "tracking.version is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.generator" },
+              "message": "tracking.generator is required",
+              "severity": "warning"
+            }
+          ]
+        },
+        {
+          "context": "$.document.tracking.revision_history[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.date" },
+              "message": "revision_history entry must have date"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.number" },
+              "message": "revision_history entry must have number"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.summary" },
+              "message": "revision_history entry must have summary"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rh-aggregate-severity",
+      "title": "Aggregate severity must use Red Hat taxonomy",
+      "rules": [
+        {
+          "context": "$.document",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.aggregate_severity" },
+                "right": {
+                  "type": "matches",
+                  "path": "$.aggregate_severity.text",
+                  "pattern": "^(low|moderate|important|critical)$"
+                }
+              },
+              "message": "aggregate_severity.text must be low, moderate, important, or critical",
+              "diagnostics": ["rh-sdg"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.aggregate_severity.namespace" },
+                "right": {
+                  "type": "equals",
+                  "path": "$.aggregate_severity.namespace",
+                  "value": "https://access.redhat.com/security/updates/classification/"
+                }
+              },
+              "message": "aggregate_severity.namespace must be the Red Hat classification URL",
+              "diagnostics": ["rh-sdg"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rh-product-tree",
+      "title": "Product tree must follow Red Hat structure",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.product_tree" },
+              "message": "product_tree is required for VEX",
+              "severity": "fatal"
+            }
+          ]
+        },
+        {
+          "context": "$.product_tree",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "exists",
+                "path": "$.branches"
+              },
+              "message": "product_tree must have branches"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "equals",
+                "path": "$.branches[0].category",
+                "value": "vendor"
+              },
+              "message": "top-level branch must be category vendor",
+              "diagnostics": ["rh-sdg"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "equals",
+                "path": "$.branches[0].name",
+                "value": "Red Hat"
+              },
+              "message": "top-level vendor branch must be named Red Hat",
+              "diagnostics": ["rh-sdg"]
+            }
+          ]
+        },
+        {
+          "context": "$.product_tree.relationships[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "equals",
+                "path": "$.category",
+                "value": "default_component_of"
+              },
+              "message": "relationship category must be default_component_of",
+              "diagnostics": ["rh-sdg"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.full_product_name.product_id" },
+              "message": "relationship must have full_product_name.product_id"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rh-vulnerability-required",
+      "title": "Vulnerability required fields",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "count",
+                "path": "$.vulnerabilities[*]",
+                "cmp": ">=",
+                "expected": 1
+              },
+              "message": "VEX must have at least one vulnerability",
+              "severity": "fatal"
+            }
+          ]
+        },
+        {
+          "context": "$.vulnerabilities[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "named", "name": "cve_id", "path": "$.cve" },
+              "message": "vulnerability.cve must be valid CVE format",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.product_status" },
+              "message": "vulnerability must have product_status"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rh-vulnerability-details",
+      "title": "Vulnerability detail conventions",
+      "rules": [
+        {
+          "context": "$.vulnerabilities[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.cwe" },
+                "right": {
+                  "type": "and",
+                  "left": {
+                    "type": "matches",
+                    "path": "$.cwe.id",
+                    "pattern": "^CWE-[0-9]+$"
+                  },
+                  "right": { "type": "exists", "path": "$.cwe.name" }
+                }
+              },
+              "message": "CWE must have valid id (CWE-NNN) and name if present",
+              "diagnostics": ["rh-sdg"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.scores" },
+                "right": {
+                  "type": "exists",
+                  "path": "$.scores[0].cvss_v3"
+                }
+              },
+              "message": "scores should use cvss_v3 if present",
+              "severity": "warning"
+            }
+          ]
+        },
+        {
+          "context": "$.vulnerabilities[*]..threats[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "equals",
+                "path": "$.category",
+                "value": "impact"
+              },
+              "message": "threat.category must be impact",
+              "diagnostics": ["rh-sdg"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.details",
+                "pattern": "^(Low|Moderate|Important|Critical)$"
+              },
+              "message": "threat.details must be Low, Moderate, Important, or Critical",
+              "diagnostics": ["rh-sdg"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rh-remediation",
+      "title": "Remediation conventions",
+      "rules": [
+        {
+          "context": "$.vulnerabilities[*]..remediations[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.category",
+                "pattern": "^(vendor_fix|workaround|no_fix_planned|none_available)$"
+              },
+              "message": "remediation.category must be vendor_fix, workaround, no_fix_planned, or none_available",
+              "diagnostics": ["rh-sdg"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.details" },
+              "message": "remediation must have details"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "exists", "path": "$.product_ids" },
+                "right": { "type": "exists", "path": "$.group_ids" }
+              },
+              "message": "remediation must reference product_ids or group_ids"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "not",
+                  "inner": {
+                    "type": "equals",
+                    "path": "$.category",
+                    "value": "vendor_fix"
+                  }
+                },
+                "right": { "type": "exists", "path": "$.url" }
+              },
+              "message": "vendor_fix remediation must have url",
+              "severity": "warning",
+              "diagnostics": ["rh-sdg"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rh-purl-conventions",
+      "title": "PURL must follow Red Hat conventions",
+      "rules": [
+        {
+          "context": "$..product_identification_helper",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": { "type": "named", "name": "purl", "path": "$.purl" }
+              },
+              "message": "purl must use pkg: scheme",
+              "diagnostics": ["rh-purl"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": {
+                  "type": "matches",
+                  "path": "$.purl",
+                  "pattern": "^pkg:(rpm/redhat|oci|maven|generic)/"
+                }
+              },
+              "message": "purl namespace must be rpm/redhat, oci, maven, or generic",
+              "diagnostics": ["rh-purl"]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

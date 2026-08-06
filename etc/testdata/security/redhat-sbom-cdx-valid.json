@@ -1,0 +1,22 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:550e8400-e29b-41d4-a716-446655440000",
+  "metadata": {
+    "timestamp": "2024-01-15T10:00:00Z",
+    "supplier": { "name": "Red Hat" },
+    "component": {
+      "type": "application",
+      "name": "rhel-9.4",
+      "purl": "pkg:rpm/redhat/rhel@9.4?arch=src"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "libxml2",
+      "version": "2.9.13-10.el9",
+      "purl": "pkg:rpm/redhat/libxml2@2.9.13-10.el9?arch=src&epoch=0"
+    }
+  ]
+}

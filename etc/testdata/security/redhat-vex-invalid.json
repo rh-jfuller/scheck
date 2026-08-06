@@ -1,0 +1,40 @@
+{
+  "document": {
+    "category": "csaf_security_advisory",
+    "csaf_version": "2.0",
+    "title": "Bad VEX",
+    "publisher": {
+      "category": "coordinator",
+      "name": "Not Red Hat",
+      "namespace": "https://example.com"
+    },
+    "tracking": {
+      "id": "BAD-001",
+      "status": "draft",
+      "current_release_date": "2024-01-15T10:00:00Z",
+      "initial_release_date": "2024-01-10T10:00:00Z",
+      "version": "1",
+      "revision_history": [
+        { "date": "2024-01-15T10:00:00Z", "number": "1", "summary": "Draft" }
+      ]
+    },
+    "aggregate_severity": {
+      "namespace": "https://example.com/severity",
+      "text": "HIGH"
+    }
+  },
+  "vulnerabilities": [
+    {
+      "cve": "not-a-cve",
+      "threats": [
+        { "category": "exploit_status", "details": "Very Bad" }
+      ],
+      "remediations": [
+        {
+          "category": "vendor_fix",
+          "details": "Fix it"
+        }
+      ]
+    }
+  ]
+}

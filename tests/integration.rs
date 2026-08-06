@@ -1334,6 +1334,39 @@ fn spdx_ntia_invalid() {
     assert!(!report.is_ok());
 }
 
+#[test]
+fn redhat_vex_valid() {
+    let schema = load_ruleset("redhat-csaf-vex");
+    let doc = scheck::load(&load_testdata("redhat-vex-valid")).unwrap();
+    let report = scheck::validate_phase(&schema, &doc, "full");
+    assert!(report.is_ok(), "expected OK, got:\n{}", report.to_text());
+}
+
+#[test]
+fn redhat_vex_invalid() {
+    let schema = load_ruleset("redhat-csaf-vex");
+    let doc = scheck::load(&load_testdata("redhat-vex-invalid")).unwrap();
+    let report = scheck::validate_phase(&schema, &doc, "full");
+    assert!(!report.is_ok());
+    assert!(report.fatal_count() >= 1);
+}
+
+#[test]
+fn redhat_sbom_spdx_valid() {
+    let schema = load_ruleset("redhat-sbom-spdx");
+    let doc = scheck::load(&load_testdata("redhat-sbom-spdx-valid")).unwrap();
+    let report = scheck::validate(&schema, &doc);
+    assert!(report.is_ok(), "expected OK, got:\n{}", report.to_text());
+}
+
+#[test]
+fn redhat_sbom_cyclonedx_valid() {
+    let schema = load_ruleset("redhat-sbom-cyclonedx");
+    let doc = scheck::load(&load_testdata("redhat-sbom-cdx-valid")).unwrap();
+    let report = scheck::validate(&schema, &doc);
+    assert!(report.is_ok(), "expected OK, got:\n{}", report.to_text());
+}
+
 // -- API rulesets ----------------------------------------------------
 
 #[test]

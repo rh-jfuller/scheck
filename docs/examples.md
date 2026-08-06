@@ -730,3 +730,141 @@ With JSON output:
 $ scheck validate etc/examples/csaf-advisory-fail.json \
     --rules etc/examples/csaf-advisory.json --phase full --format json
 ```
+
+---
+
+## Named test types
+
+Built-in validators for common formats. Use `"type": "named"` instead of
+writing regex patterns by hand.
+
+```json
+{
+  "title": "named type checks",
+  "patterns": [
+    {
+      "name": "formats",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "named", "name": "email", "path": "$.contact" },
+              "message": "contact must be a valid email"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "named", "name": "url", "path": "$.homepage" },
+              "message": "homepage must be a valid URL"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "named", "name": "semver", "path": "$.version" },
+              "message": "version must be semver"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "named", "name": "cve_id", "path": "$.cve" },
+              "message": "must be a valid CVE ID"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "named", "name": "uuid", "path": "$.id" },
+              "message": "id must be a UUID"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "named", "name": "iso_date", "path": "$.date" },
+              "message": "date must be YYYY-MM-DD"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+Supported types: `email`, `url`, `cve_id` (or `cve-id`), `purl`, `semver`,
+`uuid`, `iso_date` (or `iso-date`), `iso_datetime` (or `iso-datetime`).
+
+In the Rust builder API:
+
+```rust
+use scheck::builder::*;
+
+let schema = schema("types")
+    .pattern("p", |p| p
+        .rule("$", |r| r
+            .assert(is_email("$.contact"), "bad email")
+            .assert(is_url("$.homepage"), "bad url")
+            .assert(is_semver("$.version"), "bad version")
+            .assert(is_cve_id("$.cve"), "bad CVE")
+            .assert(is_purl("$.package"), "bad PURL")
+            .assert(is_uuid("$.id"), "bad UUID")
+            .assert(is_iso_date("$.date"), "bad date")
+            .assert(is_iso_datetime("$.timestamp"), "bad datetime")
+        )
+    )
+    .build();
+```
+
+---
+
+## Partial validation
+
+Validate only a subtree of a document with `--context`. Rules run against
+each node matched by the context path instead of the full document root.
+
+```
+$ scheck validate users.json --rules user-rules.json --context '$.users[*]'
+```
+
+Given `users.json`:
+
+```json
+{
+  "users": [
+    {"name": "Alice", "email": "alice@example.com"},
+    {"name": "Bob"},
+    {"age": 30}
+  ]
+}
+```
+
+And rules that check for `$.name` and `$.email` at the root, partial
+validation runs those checks against each user object individually.
+
+In the Rust API:
+
+```rust
+let report = scheck::validate_context(&schema, &doc, "$.users[*]", "");
+```
+
+---
+
+## Validated proof wrapper
+
+The `Validated` wrapper guarantees at the type level that a document
+passed all validation rules. It cannot be constructed directly -- only
+through `try_validate()`.
+
+```rust
+use scheck::try_validate;
+
+let doc = scheck::from_json(r#"{"name": "Alice"}"#)?;
+match try_validate(&schema, doc) {
+    Ok(validated) => {
+        // proven valid -- safe to process
+        let doc = validated.document();
+        let report = validated.report();
+    }
+    Err(failed) => {
+        // ValidationFailed implements Error + Display
+        eprintln!("{}", failed.report().to_text());
+    }
+}
+```
+
+`try_validate_phase()` accepts a phase name for phased validation.

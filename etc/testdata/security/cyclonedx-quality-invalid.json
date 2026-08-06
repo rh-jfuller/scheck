@@ -1,0 +1,11 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "metadata": {},
+  "components": [
+    {
+      "name": "bare-minimum",
+      "version": ""
+    }
+  ]
+}

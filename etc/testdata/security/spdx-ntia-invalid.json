@@ -1,0 +1,21 @@
+{
+  "spdxVersion": "SPDX-2.3",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "incomplete-sbom",
+  "documentNamespace": "not-a-url",
+  "creationInfo": {
+    "created": "2024-01-15T10:00:00Z",
+    "creators": ["Tool: test"]
+  },
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-Pkg",
+      "name": "no-version-or-supplier",
+      "downloadLocation": "NOASSERTION",
+      "supplier": "NOASSERTION",
+      "versionInfo": "NOASSERTION",
+      "licenseConcluded": "NOASSERTION"
+    }
+  ]
+}

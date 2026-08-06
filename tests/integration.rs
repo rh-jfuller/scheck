@@ -1302,6 +1302,38 @@ fn osv_ruleset_invalid_document() {
     assert!(!report.is_ok());
 }
 
+#[test]
+fn cyclonedx_quality_valid() {
+    let schema = load_ruleset("cyclonedx-quality");
+    let doc = scheck::load(&load_testdata("cyclonedx-quality-valid")).unwrap();
+    let report = scheck::validate_phase(&schema, &doc, "quality");
+    assert!(report.is_ok(), "expected OK, got:\n{}", report.to_text());
+}
+
+#[test]
+fn cyclonedx_quality_invalid() {
+    let schema = load_ruleset("cyclonedx-quality");
+    let doc = scheck::load(&load_testdata("cyclonedx-quality-invalid")).unwrap();
+    let report = scheck::validate_phase(&schema, &doc, "quality");
+    assert!(!report.is_ok());
+}
+
+#[test]
+fn spdx_ntia_valid() {
+    let schema = load_ruleset("spdx-ntia");
+    let doc = scheck::load(&load_testdata("spdx-ntia-valid")).unwrap();
+    let report = scheck::validate_phase(&schema, &doc, "quality");
+    assert!(report.is_ok(), "expected OK, got:\n{}", report.to_text());
+}
+
+#[test]
+fn spdx_ntia_invalid() {
+    let schema = load_ruleset("spdx-ntia");
+    let doc = scheck::load(&load_testdata("spdx-ntia-invalid")).unwrap();
+    let report = scheck::validate_phase(&schema, &doc, "quality");
+    assert!(!report.is_ok());
+}
+
 // -- API rulesets ----------------------------------------------------
 
 #[test]
@@ -1402,4 +1434,365 @@ fn dataset_metadata_invalid() {
     let doc = scheck::load(&load_testdata_from("data-quality", "dataset-invalid")).unwrap();
     let report = scheck::validate(&schema, &doc);
     assert!(!report.is_ok());
+}
+
+// -- Named test types ------------------------------------------------
+
+#[test]
+fn named_email_valid() {
+    let rules = r#"{
+        "title": "t",
+        "patterns": [{"name": "p", "rules": [{"context": "$", "checks": [
+            {"kind": "assert", "test": {"type": "named", "name": "email", "path": "$.email"}, "message": "bad email"}
+        ]}]}]
+    }"#;
+    assert!(
+        scheck::check_json(rules, r#"{"email": "alice@example.com"}"#)
+            .unwrap()
+            .is_ok()
+    );
+    assert!(
+        !scheck::check_json(rules, r#"{"email": "not-an-email"}"#)
+            .unwrap()
+            .is_ok()
+    );
+}
+
+#[test]
+fn named_url_valid() {
+    let rules = r#"{
+        "title": "t",
+        "patterns": [{"name": "p", "rules": [{"context": "$", "checks": [
+            {"kind": "assert", "test": {"type": "named", "name": "url", "path": "$.link"}, "message": "bad url"}
+        ]}]}]
+    }"#;
+    assert!(
+        scheck::check_json(rules, r#"{"link": "https://example.com"}"#)
+            .unwrap()
+            .is_ok()
+    );
+    assert!(
+        !scheck::check_json(rules, r#"{"link": "not a url"}"#)
+            .unwrap()
+            .is_ok()
+    );
+}
+
+#[test]
+fn named_cve_id() {
+    let rules = r#"{
+        "title": "t",
+        "patterns": [{"name": "p", "rules": [{"context": "$", "checks": [
+            {"kind": "assert", "test": {"type": "named", "name": "cve_id", "path": "$.cve"}, "message": "bad cve"}
+        ]}]}]
+    }"#;
+    assert!(
+        scheck::check_json(rules, r#"{"cve": "CVE-2024-12345"}"#)
+            .unwrap()
+            .is_ok()
+    );
+    assert!(
+        !scheck::check_json(rules, r#"{"cve": "not-a-cve"}"#)
+            .unwrap()
+            .is_ok()
+    );
+}
+
+#[test]
+fn named_cve_id_hyphenated() {
+    let rules = r#"{
+        "title": "t",
+        "patterns": [{"name": "p", "rules": [{"context": "$", "checks": [
+            {"kind": "assert", "test": {"type": "named", "name": "cve-id", "path": "$.cve"}, "message": "bad cve"}
+        ]}]}]
+    }"#;
+    assert!(
+        scheck::check_json(rules, r#"{"cve": "CVE-2024-12345"}"#)
+            .unwrap()
+            .is_ok()
+    );
+}
+
+#[test]
+fn named_purl() {
+    let rules = r#"{
+        "title": "t",
+        "patterns": [{"name": "p", "rules": [{"context": "$", "checks": [
+            {"kind": "assert", "test": {"type": "named", "name": "purl", "path": "$.purl"}, "message": "bad purl"}
+        ]}]}]
+    }"#;
+    assert!(
+        scheck::check_json(rules, r#"{"purl": "pkg:cargo/serde@1.0"}"#)
+            .unwrap()
+            .is_ok()
+    );
+    assert!(
+        !scheck::check_json(rules, r#"{"purl": "serde@1.0"}"#)
+            .unwrap()
+            .is_ok()
+    );
+}
+
+#[test]
+fn named_semver() {
+    let rules = r#"{
+        "title": "t",
+        "patterns": [{"name": "p", "rules": [{"context": "$", "checks": [
+            {"kind": "assert", "test": {"type": "named", "name": "semver", "path": "$.version"}, "message": "bad version"}
+        ]}]}]
+    }"#;
+    assert!(
+        scheck::check_json(rules, r#"{"version": "1.2.3"}"#)
+            .unwrap()
+            .is_ok()
+    );
+    assert!(
+        scheck::check_json(rules, r#"{"version": "0.1.0-beta.1"}"#)
+            .unwrap()
+            .is_ok()
+    );
+    assert!(
+        !scheck::check_json(rules, r#"{"version": "v1.2"}"#)
+            .unwrap()
+            .is_ok()
+    );
+}
+
+#[test]
+fn named_uuid() {
+    let rules = r#"{
+        "title": "t",
+        "patterns": [{"name": "p", "rules": [{"context": "$", "checks": [
+            {"kind": "assert", "test": {"type": "named", "name": "uuid", "path": "$.id"}, "message": "bad uuid"}
+        ]}]}]
+    }"#;
+    assert!(
+        scheck::check_json(rules, r#"{"id": "550e8400-e29b-41d4-a716-446655440000"}"#)
+            .unwrap()
+            .is_ok()
+    );
+    assert!(
+        !scheck::check_json(rules, r#"{"id": "not-a-uuid"}"#)
+            .unwrap()
+            .is_ok()
+    );
+}
+
+#[test]
+fn named_iso_date() {
+    let rules = r#"{
+        "title": "t",
+        "patterns": [{"name": "p", "rules": [{"context": "$", "checks": [
+            {"kind": "assert", "test": {"type": "named", "name": "iso_date", "path": "$.date"}, "message": "bad date"}
+        ]}]}]
+    }"#;
+    assert!(
+        scheck::check_json(rules, r#"{"date": "2024-01-15"}"#)
+            .unwrap()
+            .is_ok()
+    );
+    assert!(
+        !scheck::check_json(rules, r#"{"date": "Jan 15 2024"}"#)
+            .unwrap()
+            .is_ok()
+    );
+}
+
+#[test]
+fn named_iso_datetime() {
+    let rules = r#"{
+        "title": "t",
+        "patterns": [{"name": "p", "rules": [{"context": "$", "checks": [
+            {"kind": "assert", "test": {"type": "named", "name": "iso_datetime", "path": "$.ts"}, "message": "bad ts"}
+        ]}]}]
+    }"#;
+    assert!(
+        scheck::check_json(rules, r#"{"ts": "2024-01-15T10:00:00Z"}"#)
+            .unwrap()
+            .is_ok()
+    );
+    assert!(
+        !scheck::check_json(rules, r#"{"ts": "yesterday"}"#)
+            .unwrap()
+            .is_ok()
+    );
+}
+
+#[test]
+fn named_unknown_returns_false() {
+    let rules = r#"{
+        "title": "t",
+        "patterns": [{"name": "p", "rules": [{"context": "$", "checks": [
+            {"kind": "assert", "test": {"type": "named", "name": "bogus", "path": "$.x"}, "message": "unknown type"}
+        ]}]}]
+    }"#;
+    assert!(
+        !scheck::check_json(rules, r#"{"x": "anything"}"#)
+            .unwrap()
+            .is_ok()
+    );
+}
+
+#[test]
+fn named_type_builder_api() {
+    use scheck::builder::*;
+
+    let schema = schema("named types")
+        .pattern("p", |p| {
+            p.rule("$", |r| {
+                r.assert(is_email("$.email"), "bad email")
+                    .assert(is_url("$.website"), "bad url")
+                    .assert(is_semver("$.version"), "bad version")
+            })
+        })
+        .build();
+
+    let doc = r#"{"email": "a@b.com", "website": "https://x.com", "version": "1.0.0"}"#;
+    let report = scheck::validate_json(&schema, doc).unwrap();
+    assert!(report.is_ok(), "expected OK, got:\n{}", report.to_text());
+}
+
+// -- Validated proof wrapper -----------------------------------------
+
+#[test]
+fn validated_wrapper_success() {
+    use scheck::builder::*;
+
+    let s = schema("t")
+        .pattern("p", |p| {
+            p.rule("$", |r| r.assert(exists("$.name"), "need name"))
+        })
+        .build();
+    let doc = scheck::from_json(r#"{"name": "Alice"}"#).unwrap();
+    let validated = scheck::try_validate(&s, doc).unwrap();
+    assert!(validated.report().is_ok());
+    assert_eq!(
+        validated
+            .document()
+            .root
+            .get("name")
+            .unwrap()
+            .as_str()
+            .unwrap(),
+        "Alice"
+    );
+}
+
+#[test]
+fn validated_wrapper_failure() {
+    use scheck::builder::*;
+
+    let s = schema("t")
+        .pattern("p", |p| {
+            p.rule("$", |r| r.assert(exists("$.name"), "need name"))
+        })
+        .build();
+    let doc = scheck::from_json(r"{}").unwrap();
+    let err = scheck::try_validate(&s, doc).unwrap_err();
+    assert!(!err.report().is_ok());
+    assert!(err.to_string().contains("need name"));
+}
+
+#[test]
+fn validated_into_document() {
+    use scheck::builder::*;
+
+    let s = schema("t")
+        .pattern("p", |p| p.rule("$", |r| r.assert(exists("$.x"), "need x")))
+        .build();
+    let doc = scheck::from_json(r#"{"x": 1}"#).unwrap();
+    let validated = scheck::try_validate(&s, doc).unwrap();
+    let doc = validated.into_document();
+    assert_eq!(doc.root.get("x").unwrap().as_i64().unwrap(), 1);
+}
+
+// -- Partial validation (--context) ----------------------------------
+
+#[test]
+fn partial_validation_subtree() {
+    use scheck::builder::*;
+
+    let s = schema("t")
+        .pattern("p", |p| {
+            p.rule("$", |r| r.assert(exists("$.name"), "need name"))
+        })
+        .build();
+
+    let doc = scheck::from_json(r#"{"users": [{"name": "Alice"}, {"age": 30}]}"#).unwrap();
+
+    // Validate each user individually
+    let report = scheck::validate_context(&s, &doc, "$.users[*]", "");
+    // One user has name, one does not
+    assert_eq!(report.error_count(), 1);
+}
+
+#[test]
+fn partial_validation_no_match() {
+    use scheck::builder::*;
+
+    let s = schema("t")
+        .pattern("p", |p| {
+            p.rule("$", |r| r.assert(exists("$.name"), "need name"))
+        })
+        .build();
+
+    let doc = scheck::from_json(r#"{"x": 1}"#).unwrap();
+    let report = scheck::validate_context(&s, &doc, "$.nonexistent", "");
+    assert!(report.is_ok());
+    assert!(report.findings().is_empty());
+}
+
+#[test]
+fn partial_validation_single_object() {
+    use scheck::builder::*;
+
+    let s = schema("t")
+        .pattern("p", |p| {
+            p.rule("$", |r| {
+                r.assert(exists("$.title"), "need title")
+                    .assert(is_url("$.url"), "bad url")
+            })
+        })
+        .build();
+
+    let doc = scheck::from_json(
+        r#"{"metadata": {"title": "test", "url": "https://example.com"}, "data": []}"#,
+    )
+    .unwrap();
+
+    let report = scheck::validate_context(&s, &doc, "$.metadata", "");
+    assert!(report.is_ok(), "expected OK, got:\n{}", report.to_text());
+}
+
+// -- Spectral conversion ---------------------------------------------
+
+#[test]
+fn spectral_convert_and_validate() {
+    let spectral_src = load_testdata_from("api", "spectral-sample");
+    let result = scheck::spectral::convert_spectral(&spectral_src).unwrap();
+
+    // 5 convertible rules, 1 skipped custom function
+    assert_eq!(result.schema.patterns.len(), 5);
+    assert_eq!(result.skipped.len(), 1);
+    assert_eq!(result.skipped[0].0, "custom-function-rule");
+
+    // Converted schema round-trips through JSON
+    let json = serde_json::to_string(&result.schema).unwrap();
+    let schema: scheck::Schema = serde_json::from_str(&json).unwrap();
+
+    // Validate a passing document
+    let doc = r#"{
+        "info": {
+            "contact": { "name": "Alice" },
+            "description": "An API"
+        }
+    }"#;
+    let report = scheck::check_json(&json, doc).unwrap();
+    assert!(report.is_ok(), "expected OK, got:\n{}", report.to_text());
+
+    // Validate a failing document
+    let report = scheck::check_json(&json, r"{}").unwrap();
+    assert!(!report.is_ok());
+    assert!(report.error_count() >= 1);
+    assert_eq!(schema.patterns.len(), 5);
 }

@@ -1,0 +1,40 @@
+{
+  "spdxVersion": "SPDX-2.3",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "my-project-sbom",
+  "documentNamespace": "https://example.com/my-project-sbom-1.0",
+  "creationInfo": {
+    "created": "2024-01-15T10:00:00Z",
+    "creators": ["Tool: scheck-test-1.0.0"],
+    "licenseListVersion": "3.22"
+  },
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-Package-serde",
+      "name": "serde",
+      "versionInfo": "1.0.203",
+      "supplier": "Organization: Serde Project",
+      "downloadLocation": "https://crates.io/crates/serde",
+      "licenseConcluded": "MIT",
+      "copyrightText": "Copyright 2024 Serde Contributors",
+      "checksums": [
+        { "algorithm": "SHA256", "checksumValue": "abc123def456" }
+      ],
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:cargo/serde@1.0.203"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-Package-serde"
+    }
+  ]
+}

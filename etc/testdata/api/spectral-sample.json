@@ -1,0 +1,47 @@
+{
+  "rules": {
+    "info-contact": {
+      "description": "Info must have contact",
+      "given": "$",
+      "severity": "warn",
+      "then": { "field": "info.contact", "function": "truthy" }
+    },
+    "info-description": {
+      "description": "Info description must be present",
+      "given": "$",
+      "then": { "field": "info.description", "function": "truthy" }
+    },
+    "no-eval-in-markdown": {
+      "description": "No eval in markdown",
+      "given": "$..[description,title]",
+      "then": {
+        "function": "pattern",
+        "functionOptions": { "notMatch": "eval\\(" }
+      }
+    },
+    "operation-operationId-valid": {
+      "description": "operationId must be alphanumeric",
+      "given": "$.paths[*][*]",
+      "then": {
+        "field": "operationId",
+        "function": "pattern",
+        "functionOptions": { "match": "^[A-Za-z0-9-._~]+$" }
+      }
+    },
+    "operation-singular-tag": {
+      "description": "Operation must not have more than one tag",
+      "given": "$.paths[*][*]",
+      "severity": "warn",
+      "then": {
+        "field": "tags",
+        "function": "length",
+        "functionOptions": { "max": 1 }
+      }
+    },
+    "custom-function-rule": {
+      "description": "Uses custom JS function",
+      "given": "$",
+      "then": { "function": "oasPathParam" }
+    }
+  }
+}

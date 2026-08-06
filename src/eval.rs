@@ -16,7 +16,7 @@ use serde_json_path::JsonPath;
 
 use crate::document::Document;
 use crate::report::{CheckResult, FiredRule, Report, ResultKind};
-use crate::rule::{Check, CheckKind, Predicate, Schema};
+use crate::rule::{Check, CheckKind, Predicate, Schema, named_pattern};
 
 /// Maximum regex pattern length to prevent regex denial-of-service.
 const MAX_REGEX_LEN: usize = 1024;
@@ -35,6 +35,55 @@ pub fn validate(schema: &Schema, doc: &Document) -> Report {
 /// Pass `""` or `"all"` to run all patterns.
 #[must_use]
 pub fn validate_phase(schema: &Schema, doc: &Document, phase: &str) -> Report {
+    validate_root(schema, &doc.root, phase)
+}
+
+/// Validate only a subtree selected by `context_path`.
+///
+/// Runs rules against each node matched by `context_path`
+/// instead of the full document root. Useful for partial
+/// validation of specific sections.
+#[must_use]
+pub fn validate_context(
+    schema: &Schema,
+    doc: &Document,
+    context_path: &str,
+    phase: &str,
+) -> Report {
+    let subtrees = query_path(context_path, &doc.root);
+    if subtrees.is_empty() {
+        return Report::new(
+            schema.title.clone(),
+            phase.to_owned(),
+            Vec::new(),
+            Vec::new(),
+        );
+    }
+
+    let phase_name = if phase.is_empty() {
+        &schema.default_phase
+    } else {
+        phase
+    };
+
+    let mut fired_rules = Vec::new();
+    let mut results = Vec::new();
+
+    for subtree in &subtrees {
+        let sub_report = validate_root(schema, subtree, phase_name);
+        fired_rules.extend(sub_report.fired_rules);
+        results.extend(sub_report.results);
+    }
+
+    Report::new(
+        schema.title.clone(),
+        phase_name.to_owned(),
+        fired_rules,
+        results,
+    )
+}
+
+fn validate_root(schema: &Schema, root: &Value, phase: &str) -> Report {
     let phase_name = if phase.is_empty() {
         &schema.default_phase
     } else {
@@ -47,7 +96,7 @@ pub fn validate_phase(schema: &Schema, doc: &Document, phase: &str) -> Report {
 
     for pattern in &active {
         for rule in &pattern.rules {
-            let context_nodes = query_path(&rule.context, &doc.root);
+            let context_nodes = query_path(&rule.context, root);
 
             if context_nodes.is_empty() {
                 continue;
@@ -210,6 +259,16 @@ fn eval_predicate_bounded(
                 || eval_predicate_bounded(right, node, bindings, depth + 1)
         }
         Predicate::Not { inner } => !eval_predicate_bounded(inner, node, bindings, depth + 1),
+        Predicate::Named { name, path } => {
+            let Some(pattern) = named_pattern(name) else {
+                return false;
+            };
+            let Ok(re) = Regex::new(pattern) else {
+                return false;
+            };
+            let nodes = query_path_ref(path, node);
+            nodes.iter().any(|n| re.is_match(&value_as_string(n)))
+        }
     }
 }
 

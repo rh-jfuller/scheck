@@ -1,0 +1,355 @@
+{
+  "title": "SPDX NTIA Minimum Elements + Quality",
+  "description": "NTIA minimum element checks for SPDX 2.3 documents, plus quality criteria from sbomqs and sbom-scorecard. Derived from ntia-conformance-checker, sbomqs, and sbom-scorecard.",
+  "default_phase": "ntia",
+  "phases": [
+    {
+      "name": "ntia",
+      "active_patterns": [
+        "ntia-document",
+        "ntia-creation-info",
+        "ntia-packages",
+        "ntia-relationships"
+      ]
+    },
+    {
+      "name": "quality",
+      "active_patterns": [
+        "ntia-document",
+        "ntia-creation-info",
+        "ntia-packages",
+        "ntia-relationships",
+        "package-ids",
+        "package-licenses",
+        "package-integrity",
+        "document-quality"
+      ]
+    }
+  ],
+  "patterns": [
+    {
+      "name": "ntia-document",
+      "title": "NTIA: SBOM document fields",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.spdxVersion" },
+              "message": "spdxVersion is required (NTIA: data format)",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.name" },
+              "message": "name is required",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.SPDXID" },
+              "message": "SPDXID is required",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.documentNamespace" },
+              "message": "documentNamespace is required (NTIA: unique identifier)",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.dataLicense" },
+              "message": "dataLicense is required",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "equals",
+                "path": "$.dataLicense",
+                "value": "CC0-1.0"
+              },
+              "message": "dataLicense must be CC0-1.0",
+              "severity": "fatal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ntia-creation-info",
+      "title": "NTIA: SBOM author and timestamp",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.creationInfo" },
+              "message": "creationInfo is required",
+              "severity": "fatal"
+            }
+          ]
+        },
+        {
+          "context": "$.creationInfo",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.created" },
+              "message": "creationInfo.created is required (NTIA: timestamp)"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.created" },
+                "right": { "type": "named", "name": "iso_datetime", "path": "$.created" }
+              },
+              "message": "creationInfo.created must be ISO 8601 datetime"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "count",
+                "path": "$.creators[*]",
+                "cmp": ">=",
+                "expected": 1
+              },
+              "message": "creationInfo.creators must have at least one entry (NTIA: SBOM author)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ntia-packages",
+      "title": "NTIA: component minimum fields",
+      "rules": [
+        {
+          "context": "$.packages[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.SPDXID" },
+              "message": "package.SPDXID is required (NTIA: unique identifier)"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.name" },
+              "message": "package.name is required (NTIA: component name)"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.versionInfo" },
+              "message": "package.versionInfo is required (NTIA: component version)",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.supplier" },
+              "message": "package.supplier is required (NTIA: supplier name)",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.supplier" },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "equals",
+                    "path": "$.supplier",
+                    "value": "NOASSERTION"
+                  }
+                }
+              },
+              "message": "package.supplier must not be NOASSERTION (ntia-conformance-checker)"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.downloadLocation" },
+              "message": "package.downloadLocation is required"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ntia-relationships",
+      "title": "NTIA: dependency relationships",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "count",
+                "path": "$.relationships[*]",
+                "cmp": ">=",
+                "expected": 1
+              },
+              "message": "document must have at least one relationship (NTIA: dependency relationship)",
+              "severity": "warning"
+            }
+          ]
+        },
+        {
+          "context": "$.relationships[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.spdxElementId" },
+              "message": "relationship.spdxElementId is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.relationshipType" },
+              "message": "relationship.relationshipType is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.relatedSpdxElement" },
+              "message": "relationship.relatedSpdxElement is required"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "package-ids",
+      "title": "Package identification quality (sbomqs/scorecard)",
+      "rules": [
+        {
+          "context": "$.packages[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.SPDXID",
+                "pattern": "^SPDXRef-[a-zA-Z0-9._-]+$"
+              },
+              "message": "package.SPDXID must match SPDXRef-[idstring] format"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.externalRefs" },
+              "message": "package should have externalRefs for vulnerability lookup (sbomqs: comp_with_uniq_ids)",
+              "severity": "info"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.versionInfo" },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "equals",
+                    "path": "$.versionInfo",
+                    "value": "NOASSERTION"
+                  }
+                }
+              },
+              "message": "package.versionInfo must not be NOASSERTION"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "package-licenses",
+      "title": "Package license quality (sbomqs/scorecard/FSCT3)",
+      "rules": [
+        {
+          "context": "$.packages[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.licenseConcluded" },
+              "message": "package should have licenseConcluded (sbomqs: comp_with_licenses)",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.licenseConcluded" },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "equals",
+                    "path": "$.licenseConcluded",
+                    "value": "NOASSERTION"
+                  }
+                }
+              },
+              "message": "licenseConcluded should not be NOASSERTION (FSCT3)",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.copyrightText" },
+              "message": "package should have copyrightText (FSCT3)",
+              "severity": "info"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "package-integrity",
+      "title": "Package integrity (sbomqs)",
+      "rules": [
+        {
+          "context": "$.packages[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.checksums" },
+              "message": "package should have checksums for integrity (sbomqs: comp_with_checksums)",
+              "severity": "info"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "document-quality",
+      "title": "Document-level quality (sbomqs)",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "named",
+                "name": "url",
+                "path": "$.documentNamespace"
+              },
+              "message": "documentNamespace must be a valid URI (sbomqs: sbom_with_uri)",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "count",
+                "path": "$.packages[*]",
+                "cmp": ">=",
+                "expected": 1
+              },
+              "message": "document should have at least one package",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -51,6 +51,10 @@ enum Command {
         #[arg(short, long)]
         phase: Option<String>,
 
+        /// Validate only a document subtree at given path
+        #[arg(short, long)]
+        context: Option<String>,
+
         /// Output format
         #[arg(
             short,
@@ -72,6 +76,16 @@ enum Command {
             value_parser = ["dsl", "json", "schematron", "freetext"]
         )]
         rule_format: Option<String>,
+    },
+
+    /// Convert rules from another format to scheck JSON
+    Convert {
+        /// Input rule file to convert
+        input: String,
+
+        /// Source format
+        #[arg(long, value_parser = ["spectral"])]
+        from: String,
     },
 }
 
@@ -111,15 +125,18 @@ fn run(cli: &Cli) -> Result<String, String> {
             rules,
             rule_format,
             phase,
+            context,
             format,
         } => run_validate(
             document,
             rules,
             rule_format.as_deref(),
             phase.as_deref(),
+            context.as_deref(),
             format,
         ),
         Command::Check { rules, rule_format } => run_check(rules, rule_format.as_deref()),
+        Command::Convert { input, from } => run_convert(input, from),
     }
 }
 
@@ -170,6 +187,7 @@ fn run_validate(
     rules_path: &str,
     rule_format: Option<&str>,
     phase: Option<&str>,
+    context: Option<&str>,
     format: &str,
 ) -> Result<String, String> {
     let rules_src = read_file_bounded(rules_path)?;
@@ -178,7 +196,11 @@ fn run_validate(
     let fmt = detect_format(rules_path, rule_format);
     let schema = load_schema(&rules_src, fmt)?;
     let doc = scheck::load(&doc_src).map_err(|e| format!("Document error: {e}"))?;
-    let report = scheck::validate_phase(&schema, &doc, phase.unwrap_or(""));
+    let phase_str = phase.unwrap_or("");
+    let report = match context {
+        Some(ctx) => scheck::validate_context(&schema, &doc, ctx, phase_str),
+        None => scheck::validate_phase(&schema, &doc, phase_str),
+    };
 
     let output = match format {
         "json" => report.to_json(),
@@ -202,4 +224,33 @@ fn run_check(rules_path: &str, rule_format: Option<&str>) -> Result<String, Stri
         schema.phases.len(),
         fmt,
     ))
+}
+
+#[cfg(feature = "cli")]
+fn run_convert(input_path: &str, from: &str) -> Result<String, String> {
+    use std::fmt::Write;
+
+    let src = read_file_bounded(input_path)?;
+
+    match from {
+        "spectral" => {
+            let result = scheck::spectral::convert_spectral(&src)?;
+            let mut output = String::new();
+
+            if !result.skipped.is_empty() {
+                for (name, reason) in &result.skipped {
+                    let _ = writeln!(output, "# skipped: {name} ({reason})");
+                }
+                output.push('\n');
+            }
+
+            let json = serde_json::to_string_pretty(&result.schema)
+                .map_err(|e| format!("JSON serialization error: {e}"))?;
+            output.push_str(&json);
+            output.push('\n');
+
+            Ok(output)
+        }
+        other => Err(format!("unknown source format: {other}")),
+    }
 }

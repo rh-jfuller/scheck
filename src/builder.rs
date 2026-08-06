@@ -103,6 +103,96 @@ pub fn not(inner: Predicate) -> Predicate {
     }
 }
 
+/// Value at path must be a valid email address.
+#[must_use]
+pub fn is_email(path: &str) -> Predicate {
+    Predicate::Named {
+        name: "email".to_owned(),
+        path: path.to_owned(),
+    }
+}
+
+/// Value at path must be an HTTP(S) URL.
+#[must_use]
+pub fn is_url(path: &str) -> Predicate {
+    Predicate::Named {
+        name: "url".to_owned(),
+        path: path.to_owned(),
+    }
+}
+
+/// Value at path must be a CVE identifier (CVE-YYYY-NNNNN+).
+#[must_use]
+pub fn is_cve_id(path: &str) -> Predicate {
+    Predicate::Named {
+        name: "cve_id".to_owned(),
+        path: path.to_owned(),
+    }
+}
+
+/// Value at path must be a Package URL (pkg: scheme).
+#[must_use]
+pub fn is_purl(path: &str) -> Predicate {
+    Predicate::Named {
+        name: "purl".to_owned(),
+        path: path.to_owned(),
+    }
+}
+
+/// Value at path must be a semantic version (X.Y.Z).
+#[must_use]
+pub fn is_semver(path: &str) -> Predicate {
+    Predicate::Named {
+        name: "semver".to_owned(),
+        path: path.to_owned(),
+    }
+}
+
+/// Value at path must be a UUID.
+#[must_use]
+pub fn is_uuid(path: &str) -> Predicate {
+    Predicate::Named {
+        name: "uuid".to_owned(),
+        path: path.to_owned(),
+    }
+}
+
+/// Value at path must be an ISO 8601 date (YYYY-MM-DD).
+#[must_use]
+pub fn is_iso_date(path: &str) -> Predicate {
+    Predicate::Named {
+        name: "iso_date".to_owned(),
+        path: path.to_owned(),
+    }
+}
+
+/// Value at path must be an ISO 8601 datetime.
+#[must_use]
+pub fn is_iso_datetime(path: &str) -> Predicate {
+    Predicate::Named {
+        name: "iso_datetime".to_owned(),
+        path: path.to_owned(),
+    }
+}
+
+/// Value at path must be a CPE identifier (v2.2 or v2.3).
+#[must_use]
+pub fn is_cpe(path: &str) -> Predicate {
+    Predicate::Named {
+        name: "cpe".to_owned(),
+        path: path.to_owned(),
+    }
+}
+
+/// Named test type by string name and path.
+#[must_use]
+pub fn named(name: &str, path: &str) -> Predicate {
+    Predicate::Named {
+        name: name.to_owned(),
+        path: path.to_owned(),
+    }
+}
+
 // -- Schema builder -------------------------------------------------------
 
 /// Start building a schema with the given title.

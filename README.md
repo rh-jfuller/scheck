@@ -64,7 +64,7 @@ Options:
 
 ```
 $ scheck validate --help
-Validate a document against a rule file
+Validate a document against one or more rule files
 
 Usage: scheck validate [OPTIONS] --rules <RULES> <DOCUMENT>
 
@@ -72,13 +72,23 @@ Arguments:
   <DOCUMENT>  Document to validate (JSON or YAML)
 
 Options:
-  -r, --rules <RULES>              Rule file (.scheck, .json, .xml, or .txt)
+  -r, --rules <RULES>              Rule file(s) -- repeat for multiple independent rulesets
       --rule-format <RULE_FORMAT>  Rule format (auto-detected from extension if omitted)
                                    [possible values: dsl, json, schematron, freetext]
   -p, --phase <PHASE>              Phase to activate (default: schema's `default_phase`)
   -c, --context <CONTEXT>          Validate only a document subtree at given path
   -f, --format <FORMAT>            Output format [default: text] [possible values: text, json]
   -h, --help                       Print help
+```
+
+Multiple `--rules` flags run each ruleset independently against the same
+document, combining all findings into one report:
+
+```
+$ scheck validate advisory.json \
+    --rules rulesets/security/csaf-2.0-mandatory.json \
+    --rules rulesets/security/redhat-csaf-vex.json \
+    --phase full
 ```
 
 ### scheck check
@@ -464,8 +474,11 @@ let rules = ruleset("example")
     .build();
 let report = scheck::validate_json(&rules, r#"{"name": "Alice"}"#)?;
 
-// Or load JSON rules directly
+// Load JSON rules directly
 let report = scheck::check_json(rules_json, doc_json)?;
+
+// Run multiple independent rulesets against one document
+let report = scheck::validate_all(&[&base_rules, &org_rules], &doc);
 ```
 
 ## License

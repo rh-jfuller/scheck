@@ -30,6 +30,36 @@ pub fn validate(schema: &Schema, doc: &Document) -> Report {
     validate_phase(schema, doc, "")
 }
 
+/// Run multiple independent rulesets against one document.
+///
+/// Each ruleset evaluates independently using its default phase.
+/// Results combine into a single report.
+#[must_use]
+pub fn validate_all(schemas: &[&Schema], doc: &Document) -> Report {
+    validate_all_phase(schemas, doc, "")
+}
+
+/// Run multiple independent rulesets against one document with a named phase.
+///
+/// Each ruleset evaluates independently. Phase applies per-ruleset:
+/// rulesets that define the phase use it, others run all patterns.
+#[must_use]
+pub fn validate_all_phase(schemas: &[&Schema], doc: &Document, phase: &str) -> Report {
+    let mut all_fired = Vec::new();
+    let mut all_results = Vec::new();
+    let mut titles = Vec::new();
+
+    for schema in schemas {
+        let report = validate_phase(schema, doc, phase);
+        titles.push(report.schema_title);
+        all_fired.extend(report.fired_rules);
+        all_results.extend(report.results);
+    }
+
+    let combined_title = titles.join(" + ");
+    Report::new(combined_title, phase.to_owned(), all_fired, all_results)
+}
+
 /// Validate a document against a schema using a named phase.
 ///
 /// Pass `""` or `"all"` to run all patterns.

@@ -31,14 +31,14 @@ struct Cli {
 #[cfg(feature = "cli")]
 #[derive(clap::Subcommand)]
 enum Command {
-    /// Validate a document against a rule file
+    /// Validate a document against one or more rule files
     Validate {
         /// Document to validate (JSON or YAML)
         document: String,
 
-        /// Rule file (.scheck, .json, .xml, or .txt)
-        #[arg(short, long)]
-        rules: String,
+        /// Rule file(s) -- repeat for multiple independent rulesets
+        #[arg(short, long, required = true)]
+        rules: Vec<String>,
 
         /// Rule format (auto-detected from extension if omitted)
         #[arg(
@@ -184,22 +184,45 @@ fn read_file_bounded(path: &str) -> Result<String, String> {
 #[cfg(feature = "cli")]
 fn run_validate(
     doc_path: &str,
-    rules_path: &str,
+    rules_paths: &[String],
     rule_format: Option<&str>,
     phase: Option<&str>,
     context: Option<&str>,
     format: &str,
 ) -> Result<String, String> {
-    let rules_src = read_file_bounded(rules_path)?;
     let doc_src = read_file_bounded(doc_path)?;
-
-    let fmt = detect_format(rules_path, rule_format);
-    let schema = load_schema(&rules_src, fmt)?;
     let doc = scheck::load(&doc_src).map_err(|e| format!("Document error: {e}"))?;
+
+    let mut schemas = Vec::new();
+    for rules_path in rules_paths {
+        let rules_src = read_file_bounded(rules_path)?;
+        let fmt = detect_format(rules_path, rule_format);
+        schemas.push(load_schema(&rules_src, fmt)?);
+    }
+
+    let schema_refs: Vec<&scheck::Schema> = schemas.iter().collect();
     let phase_str = phase.unwrap_or("");
-    let report = match context {
-        Some(ctx) => scheck::validate_context(&schema, &doc, ctx, phase_str),
-        None => scheck::validate_phase(&schema, &doc, phase_str),
+
+    let report = if let Some(ctx) = context {
+        // Partial validation does not support multi-ruleset yet;
+        // run each independently and combine
+        let mut all_fired = Vec::new();
+        let mut all_results = Vec::new();
+        let mut titles = Vec::new();
+        for schema in &schemas {
+            let r = scheck::validate_context(schema, &doc, ctx, phase_str);
+            titles.push(r.schema_title.clone());
+            all_fired.extend(r.fired_rules);
+            all_results.extend(r.results);
+        }
+        scheck::Report::new(
+            titles.join(" + "),
+            phase_str.to_owned(),
+            all_fired,
+            all_results,
+        )
+    } else {
+        scheck::validate_all_phase(&schema_refs, &doc, phase_str)
     };
 
     let output = match format {

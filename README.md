@@ -251,7 +251,7 @@ with no parsing at all:
 use scheck::builder::*;
 use scheck::{Severity, validate_json};
 
-let schema = schema("CSAF Checks")
+let rules = ruleset("CSAF Checks")
     .pattern("required-fields", |p| p
         .title("Core fields must be present")
         .rule("$", |r| r
@@ -267,14 +267,14 @@ let schema = schema("CSAF Checks")
     .build();
 
 // Validate directly
-let report = validate_json(&schema, &json_string)?;
+let report = validate_json(&rules, &json_string)?;
 assert!(report.is_ok());
 
 // Or serialize to JSON for sharing
-let rules_json = serde_json::to_string_pretty(&schema)?;
+let rules_json = serde_json::to_string_pretty(&rules)?;
 ```
 
-The schema round-trips through JSON. Build in Rust, export as JSON for other
+Rulesets round-trip through JSON. Build in Rust, export as JSON for other
 tools. Import JSON, validate in Rust.
 
 ### Converting Spectral rulesets
@@ -377,9 +377,17 @@ For Rust library users, `Validated` guarantees at the type level that a
 document passed all checks:
 
 ```rust
+use scheck::builder::*;
 use scheck::try_validate;
+
+let rules = ruleset("example")
+    .pattern("p", |p| p
+        .rule("$", |r| r.assert(exists("$.name"), "name required"))
+    )
+    .build();
+
 let doc = scheck::from_json(r#"{"name": "Alice"}"#)?;
-match try_validate(&schema, doc) {
+match try_validate(&rules, doc) {
     Ok(validated) => {
         let doc = validated.document(); // proven valid
     }
@@ -445,7 +453,7 @@ Built-in validators for common formats, usable as `{"type": "named", "name": "<t
 use scheck::builder::*;
 
 // Builder API with named types
-let schema = schema("example")
+let rules = ruleset("example")
     .pattern("p", |p| p
         .rule("$", |r| r
             .assert(exists("$.name"), "name required")
@@ -454,7 +462,7 @@ let schema = schema("example")
         )
     )
     .build();
-let report = scheck::validate_json(&schema, r#"{"name": "Alice"}"#)?;
+let report = scheck::validate_json(&rules, r#"{"name": "Alice"}"#)?;
 
 // Or load JSON rules directly
 let report = scheck::check_json(rules_json, doc_json)?;

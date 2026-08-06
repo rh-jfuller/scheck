@@ -195,7 +195,15 @@ pub fn named(name: &str, path: &str) -> Predicate {
 
 // -- Schema builder -------------------------------------------------------
 
-/// Start building a schema with the given title.
+/// Start building a ruleset with the given title.
+#[must_use]
+pub fn ruleset(title: &str) -> SchemaBuilder {
+    schema(title)
+}
+
+/// Start building a ruleset with the given title.
+///
+/// Alias: `ruleset()`.
 #[must_use]
 pub fn schema(title: &str) -> SchemaBuilder {
     SchemaBuilder {

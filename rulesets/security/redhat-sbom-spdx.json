@@ -1,0 +1,200 @@
+{
+  "title": "Red Hat SPDX SBOM Conventions",
+  "description": "Red Hat-specific conventions for SPDX 2.3 SBOMs, derived from https://github.com/RedHatProductSecurity/security-data-guidelines. Validates document structure, creator conventions, supplier, PURL/CPE references, and checksums.",
+  "diagnostics": [
+    { "id": "rh-sbom", "message": "Red Hat Security Data Guidelines — sbom/ section" },
+    { "id": "rh-purl", "message": "Red Hat PURL conventions — purl.md" }
+  ],
+  "patterns": [
+    {
+      "name": "rh-document-structure",
+      "title": "Document structure must match Red Hat conventions",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "equals",
+                "path": "$.spdxVersion",
+                "value": "SPDX-2.3"
+              },
+              "message": "spdxVersion must be SPDX-2.3",
+              "severity": "fatal",
+              "diagnostics": ["rh-sbom"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "equals",
+                "path": "$.dataLicense",
+                "value": "CC0-1.0"
+              },
+              "message": "dataLicense must be CC0-1.0",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "equals",
+                "path": "$.SPDXID",
+                "value": "SPDXRef-DOCUMENT"
+              },
+              "message": "SPDXID must be SPDXRef-DOCUMENT",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.documentNamespace",
+                "pattern": "^https://(www\\.redhat\\.com|security\\.access\\.redhat\\.com)/"
+              },
+              "message": "documentNamespace must be a Red Hat URI",
+              "diagnostics": ["rh-sbom"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rh-creation-info",
+      "title": "Creation info must follow Red Hat conventions",
+      "rules": [
+        {
+          "context": "$.creationInfo",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.created" },
+              "message": "creationInfo.created is required"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "named",
+                "name": "iso_datetime",
+                "path": "$.created"
+              },
+              "message": "creationInfo.created must be ISO 8601 datetime"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "count",
+                "path": "$.creators[*]",
+                "cmp": ">=",
+                "expected": 1
+              },
+              "message": "creationInfo must have at least one creator"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rh-packages",
+      "title": "Package fields must follow Red Hat conventions",
+      "rules": [
+        {
+          "context": "$.packages[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.SPDXID" },
+              "message": "package.SPDXID is required"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.SPDXID",
+                "pattern": "^SPDXRef-[a-zA-Z0-9._-]+$"
+              },
+              "message": "package.SPDXID must match SPDXRef-[idstring] format"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.name" },
+              "message": "package.name is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.downloadLocation" },
+              "message": "package.downloadLocation is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.supplier" },
+              "message": "package.supplier is required",
+              "severity": "warning",
+              "diagnostics": ["rh-sbom"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.versionInfo" },
+              "message": "package.versionInfo is required",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.externalRefs" },
+              "message": "package should have externalRefs (PURL or CPE)",
+              "severity": "warning",
+              "diagnostics": ["rh-sbom"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.checksums" },
+              "message": "package should have checksums",
+              "severity": "info",
+              "diagnostics": ["rh-sbom"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rh-relationships",
+      "title": "Relationships must be present",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "count",
+                "path": "$.relationships[*]",
+                "cmp": ">=",
+                "expected": 1
+              },
+              "message": "document must have at least one relationship"
+            }
+          ]
+        },
+        {
+          "context": "$.relationships[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.spdxElementId" },
+              "message": "relationship.spdxElementId is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.relationshipType" },
+              "message": "relationship.relationshipType is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.relatedSpdxElement" },
+              "message": "relationship.relatedSpdxElement is required"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

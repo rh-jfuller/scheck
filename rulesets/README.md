@@ -4,7 +4,7 @@ Ready-to-use rulesets for common document formats, organized by domain.
 
 | Domain | Directory | Rulesets |
 |--------|-----------|----------|
-| [Security](security/) | `rulesets/security/` | CSAF 2.0, CycloneDX, SPDX, VEX, OSV |
+| [Security](security/) | `rulesets/security/` | CSAF 2.0, CycloneDX (min + quality), SPDX (min + NTIA), VEX, OSV |
 | [API](api/) | `rulesets/api/` | REST response contracts, JSON:API |
 | [Config](config/) | `rulesets/config/` | Kubernetes pod policy, GitHub Actions |
 | [Data Quality](data-quality/) | `rulesets/data-quality/` | Contact records, dataset metadata |

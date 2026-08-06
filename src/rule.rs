@@ -201,6 +201,27 @@ pub enum Predicate {
     },
     /// Logical NOT of a predicate.
     Not { inner: Box<Predicate> },
+    /// Named built-in test type. See `named_pattern()` for supported names.
+    Named { name: String, path: String },
+}
+
+/// Built-in named test type patterns.
+/// Returns `None` if name is not recognized.
+#[must_use]
+pub fn named_pattern(name: &str) -> Option<&'static str> {
+    match name {
+        "email" => Some(r"^[^@\s]+@[^@\s]+\.[^@\s]+$"),
+        "url" => Some(r"^https?://\S+"),
+        "cve_id" | "cve-id" => Some(r"^CVE-[0-9]{4}-[0-9]{4,}$"),
+        "purl" => Some(r"^pkg:[a-z][a-z0-9._-]*/"),
+        "semver" => {
+            Some(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-[a-zA-Z0-9.]+)?(\+[a-zA-Z0-9.]+)?$")
+        }
+        "uuid" => Some(r"(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"),
+        "iso_date" | "iso-date" => Some(r"^\d{4}-\d{2}-\d{2}$"),
+        "iso_datetime" | "iso-datetime" => Some(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}"),
+        _ => None,
+    }
 }
 
 /// Comparison operators for count predicates.

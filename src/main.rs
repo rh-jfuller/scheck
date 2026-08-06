@@ -51,6 +51,10 @@ enum Command {
         #[arg(short, long)]
         phase: Option<String>,
 
+        /// Validate only a document subtree at given path
+        #[arg(short, long)]
+        context: Option<String>,
+
         /// Output format
         #[arg(
             short,
@@ -111,12 +115,14 @@ fn run(cli: &Cli) -> Result<String, String> {
             rules,
             rule_format,
             phase,
+            context,
             format,
         } => run_validate(
             document,
             rules,
             rule_format.as_deref(),
             phase.as_deref(),
+            context.as_deref(),
             format,
         ),
         Command::Check { rules, rule_format } => run_check(rules, rule_format.as_deref()),
@@ -170,6 +176,7 @@ fn run_validate(
     rules_path: &str,
     rule_format: Option<&str>,
     phase: Option<&str>,
+    context: Option<&str>,
     format: &str,
 ) -> Result<String, String> {
     let rules_src = read_file_bounded(rules_path)?;
@@ -178,7 +185,11 @@ fn run_validate(
     let fmt = detect_format(rules_path, rule_format);
     let schema = load_schema(&rules_src, fmt)?;
     let doc = scheck::load(&doc_src).map_err(|e| format!("Document error: {e}"))?;
-    let report = scheck::validate_phase(&schema, &doc, phase.unwrap_or(""));
+    let phase_str = phase.unwrap_or("");
+    let report = match context {
+        Some(ctx) => scheck::validate_context(&schema, &doc, ctx, phase_str),
+        None => scheck::validate_phase(&schema, &doc, phase_str),
+    };
 
     let output = match format {
         "json" => report.to_json(),

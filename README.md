@@ -240,9 +240,35 @@ scheck uses [JSONPath (RFC 9535)](https://www.rfc-editor.org/rfc/rfc9535):
 | `equals` | Scalar at path equals value |
 | `matches` | Scalar at path matches regex |
 | `count` | Count of nodes satisfies comparison |
+| `named` | Value matches a built-in type (see below) |
 | `and` | Both predicates must hold |
 | `or` | At least one must hold |
 | `not` | Predicate must not hold |
+
+### Named test types
+
+Built-in validators for common formats, usable as `{"type": "named", "name": "<type>", "path": "..."}`:
+
+| Name | Matches |
+|------|---------|
+| `email` | Email address (`user@host.tld`) |
+| `url` | HTTP(S) URL |
+| `cve_id` / `cve-id` | CVE identifier (`CVE-YYYY-NNNNN+`) |
+| `purl` | Package URL (`pkg:type/name`) |
+| `semver` | Semantic version (`X.Y.Z`, with optional pre-release/build) |
+| `uuid` | UUID (`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`) |
+| `iso_date` / `iso-date` | ISO 8601 date (`YYYY-MM-DD`) |
+| `iso_datetime` / `iso-datetime` | ISO 8601 datetime (`YYYY-MM-DDThh:mm:ss`) |
+
+### Partial validation
+
+Validate only a subtree of a document with `--context`:
+
+```
+$ scheck validate doc.json --rules rules.json --context '$.vulnerabilities[*]'
+```
+
+Rules run against each node matched by the context path instead of the full document root.
 
 ## Output
 
@@ -282,7 +308,7 @@ cargo install scheck
 ## CLI
 
 ```
-scheck validate <document> --rules <rules> [--phase <name>] [--format text|json]
+scheck validate <document> --rules <rules> [--phase <name>] [--context <path>] [--format text|json]
 scheck check <rules>   # validate rule file syntax
 ```
 
@@ -297,11 +323,15 @@ scheck check <rules>   # validate rule file syntax
 Three ways to use scheck from Rust:
 
 ```rust
-// 1. Builder API (recommended for Rust projects)
+// 1. Builder API with named types (recommended)
 use scheck::builder::*;
 let schema = schema("example")
     .pattern("p", |p| p
-        .rule("$", |r| r.assert(exists("$.name"), "name required"))
+        .rule("$", |r| r
+            .assert(exists("$.name"), "name required")
+            .assert(is_email("$.email"), "invalid email")
+            .assert(is_semver("$.version"), "invalid version")
+        )
     )
     .build();
 let report = scheck::validate_json(&schema, r#"{"name": "Alice"}"#)?;
@@ -311,6 +341,23 @@ let report = scheck::check_json(rules_json, doc_json)?;
 
 // 3. DSL rules
 let report = scheck::check(rules_dsl, doc_json)?;
+```
+
+### Validated proof wrapper
+
+`Validated` guarantees at the type level that a document passed all checks:
+
+```rust
+use scheck::try_validate;
+let doc = scheck::from_json(r#"{"name": "Alice"}"#)?;
+match try_validate(&schema, doc) {
+    Ok(validated) => {
+        let doc = validated.document(); // proven valid
+    }
+    Err(failed) => {
+        eprintln!("{}", failed.report().to_text());
+    }
+}
 ```
 
 ## Rulesets

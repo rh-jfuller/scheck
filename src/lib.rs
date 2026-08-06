@@ -12,7 +12,7 @@ mod validated;
 pub use document::{Document, DocumentError, from_json, from_yaml, load};
 pub use eval::{
     check, check_freetext, check_json, check_ok, check_phase, check_schematron, validate,
-    validate_context, validate_json, validate_phase,
+    validate_all, validate_all_phase, validate_context, validate_json, validate_phase,
 };
 pub use freetext::{FreetextError, parse_freetext};
 pub use parser::{ParseError, parse_schema};

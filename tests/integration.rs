@@ -1829,3 +1829,102 @@ fn spectral_convert_and_validate() {
     assert!(report.error_count() >= 1);
     assert_eq!(schema.patterns.len(), 5);
 }
+
+// -- Multi-ruleset validation ----------------------------------------
+
+#[test]
+fn validate_all_combines_reports() {
+    use scheck::builder::*;
+
+    let rules1 = ruleset("first")
+        .pattern("p1", |p| {
+            p.rule("$", |r| r.assert(exists("$.name"), "name required"))
+        })
+        .build();
+
+    let rules2 = ruleset("second")
+        .pattern("p2", |p| {
+            p.rule("$", |r| r.assert(exists("$.email"), "email required"))
+        })
+        .build();
+
+    let doc = scheck::from_json(r#"{"name": "Alice"}"#).unwrap();
+    let report = scheck::validate_all(&[&rules1, &rules2], &doc);
+
+    assert!(!report.is_ok());
+    assert_eq!(report.error_count(), 1);
+    assert!(report.schema_title.contains("first"));
+    assert!(report.schema_title.contains("second"));
+}
+
+#[test]
+fn validate_all_both_pass() {
+    use scheck::builder::*;
+
+    let rules1 = ruleset("a")
+        .pattern("p", |p| p.rule("$", |r| r.assert(exists("$.x"), "need x")))
+        .build();
+
+    let rules2 = ruleset("b")
+        .pattern("p", |p| p.rule("$", |r| r.assert(exists("$.y"), "need y")))
+        .build();
+
+    let doc = scheck::from_json(r#"{"x": 1, "y": 2}"#).unwrap();
+    let report = scheck::validate_all(&[&rules1, &rules2], &doc);
+    assert!(report.is_ok());
+}
+
+#[test]
+fn validate_all_phase_applies_per_ruleset() {
+    use scheck::builder::*;
+
+    let rules1 = ruleset("has-phase")
+        .default_phase("quick")
+        .phase("quick", &["basic"])
+        .phase("full", &["basic", "strict"])
+        .pattern("basic", |p| {
+            p.rule("$", |r| r.assert(exists("$.id"), "need id"))
+        })
+        .pattern("strict", |p| {
+            p.rule("$", |r| {
+                r.assert(matches("$.id", "^[A-Z]"), "id must start uppercase")
+            })
+        })
+        .build();
+
+    // No phases defined -- runs all patterns regardless of phase arg
+    let rules2 = ruleset("no-phase")
+        .pattern("p", |p| {
+            p.rule("$", |r| r.assert(exists("$.name"), "need name"))
+        })
+        .build();
+
+    let doc = scheck::from_json(r#"{"id": "abc", "name": "test"}"#).unwrap();
+
+    // quick phase: rules1 runs only "basic" (passes), rules2 runs all (passes)
+    let quick = scheck::validate_all_phase(&[&rules1, &rules2], &doc, "quick");
+    assert!(quick.is_ok());
+
+    // full phase: rules1 runs "basic"+"strict" (strict fails), rules2 runs all (passes)
+    let full = scheck::validate_all_phase(&[&rules1, &rules2], &doc, "full");
+    assert!(!full.is_ok());
+    assert_eq!(full.error_count(), 1);
+}
+
+#[test]
+fn validate_all_with_file_rulesets() {
+    let csaf = load_ruleset("csaf-2.0-mandatory");
+    let redhat = load_ruleset("redhat-csaf-vex");
+    let doc = scheck::load(&load_testdata("redhat-vex-valid")).unwrap();
+
+    let report = scheck::validate_all_phase(&[&csaf, &redhat], &doc, "full");
+    assert!(report.is_ok(), "expected OK, got:\n{}", report.to_text());
+}
+
+#[test]
+fn validate_all_empty_rulesets() {
+    let doc = scheck::from_json(r#"{"x": 1}"#).unwrap();
+    let report = scheck::validate_all(&[], &doc);
+    assert!(report.is_ok());
+    assert!(report.findings().is_empty());
+}

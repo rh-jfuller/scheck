@@ -60,7 +60,7 @@ enum Command {
             short,
             long,
             default_value = "text",
-            value_parser = ["text", "json"]
+            value_parser = ["text", "json", "sarif"]
         )]
         format: String,
     },
@@ -227,6 +227,7 @@ fn run_validate(
 
     let output = match format {
         "json" => report.to_json(),
+        "sarif" => report.to_sarif(doc_path),
         _ => report.to_text(),
     };
 

@@ -41,6 +41,17 @@ sudo rpm -i https://github.com/rh-jfuller/scheck/releases/latest/download/scheck
 cargo install scheck
 ```
 
+### GitHub Action
+
+Use [scheck-action](https://github.com/marketplace/actions/scheck-action) to run scheck in your CI pipeline:
+
+```yaml
+- uses: rh-jfuller/scheck-action-v1@v1
+  with:
+    document: config.json
+    rules: rules/security.scheck
+```
+
 ## CLI
 
 ```

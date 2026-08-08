@@ -256,6 +256,122 @@ impl Report {
         buf.push_str("  ],\n");
     }
 
+    /// SARIF v2.1.0 report for GitHub Code Scanning.
+    #[must_use]
+    pub fn to_sarif(&self, document_path: &str) -> String {
+        let mut buf = String::from("{\n");
+        buf.push_str("  \"version\": \"2.1.0\",\n");
+        buf.push_str(
+            "  \"$schema\": \"https://raw.githubusercontent.com\
+             /oasis-tcs/sarif-spec/main/sarif-2.1\
+             /schema/sarif-schema-2.1.0.json\",\n",
+        );
+        buf.push_str("  \"runs\": [\n    {\n");
+
+        // tool
+        buf.push_str("      \"tool\": {\n");
+        buf.push_str("        \"driver\": {\n");
+        buf.push_str("          \"name\": \"scheck\",\n");
+        let _ = writeln!(
+            buf,
+            "          \"version\": \"{}\",",
+            env!("CARGO_PKG_VERSION")
+        );
+        let _ = writeln!(
+            buf,
+            "          \"informationUri\": \
+             \"https://github.com/rh-jfuller/scheck\","
+        );
+        self.write_sarif_rules(&mut buf);
+        buf.push_str("        }\n");
+        buf.push_str("      },\n");
+
+        // results
+        self.write_sarif_results(&mut buf, document_path);
+
+        buf.push_str("    }\n  ]\n}");
+        buf
+    }
+
+    fn write_sarif_rules(&self, buf: &mut String) {
+        let findings = self.findings();
+        // Deduplicate rule IDs
+        let mut seen = Vec::new();
+        buf.push_str("          \"rules\": [\n");
+        let mut count = 0;
+        for f in &findings {
+            let rule_id = &f.pattern;
+            if seen.contains(rule_id) {
+                continue;
+            }
+            seen.push(rule_id.clone());
+            if count > 0 {
+                buf.push_str(",\n");
+            }
+            buf.push_str("            {\n");
+            let _ = writeln!(buf, "              \"id\": \"{}\",", json_escape(rule_id));
+            let _ = writeln!(
+                buf,
+                "              \"shortDescription\": \
+                 {{ \"text\": \"{}\" }},",
+                json_escape(rule_id)
+            );
+            let _ = write!(
+                buf,
+                "              \"defaultConfiguration\": \
+                 {{ \"level\": \"{}\" }}",
+                sarif_level(f.severity)
+            );
+            buf.push_str("\n            }");
+            count += 1;
+        }
+        buf.push('\n');
+        buf.push_str("          ]\n");
+    }
+
+    fn write_sarif_results(&self, buf: &mut String, document_path: &str) {
+        let findings = self.findings();
+        buf.push_str("      \"results\": [\n");
+        for (i, f) in findings.iter().enumerate() {
+            buf.push_str("        {\n");
+            let _ = writeln!(
+                buf,
+                "          \"ruleId\": \"{}\",",
+                json_escape(&f.pattern)
+            );
+            let _ = writeln!(buf, "          \"level\": \"{}\",", sarif_level(f.severity));
+            let _ = writeln!(
+                buf,
+                "          \"message\": {{ \"text\": \"{}\" }},",
+                json_escape(&f.message)
+            );
+            buf.push_str("          \"locations\": [\n");
+            buf.push_str("            {\n");
+            buf.push_str("              \"physicalLocation\": {\n");
+            let _ = writeln!(
+                buf,
+                "                \"artifactLocation\": \
+                 {{ \"uri\": \"{}\" }},",
+                json_escape(document_path)
+            );
+            buf.push_str(
+                "                \"region\": \
+                 { \"startLine\": 1 }\n",
+            );
+            buf.push_str("              },\n");
+            let _ = writeln!(
+                buf,
+                "              \"logicalLocations\": \
+                 [{{ \"name\": \"{}\" }}]",
+                json_escape(&f.path)
+            );
+            buf.push_str("            }\n");
+            buf.push_str("          ]\n");
+            trailing_comma(buf, i, findings.len());
+        }
+        buf.push_str("      ]\n");
+    }
+
     fn write_summary_json(&self, buf: &mut String) {
         buf.push_str("  \"summary\": {\n");
         let _ = writeln!(buf, "    \"fatal\": {},", self.fatal_count());
@@ -271,6 +387,14 @@ fn trailing_comma(buf: &mut String, i: usize, len: usize) {
         buf.push_str("    },\n");
     } else {
         buf.push_str("    }\n");
+    }
+}
+
+fn sarif_level(sev: Severity) -> &'static str {
+    match sev {
+        Severity::Fatal | Severity::Error => "error",
+        Severity::Warning => "warning",
+        Severity::Info => "note",
     }
 }
 

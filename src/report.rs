@@ -48,6 +48,9 @@ pub struct CheckResult {
     pub message: String,
     pub diagnostic: String,
     pub flag: String,
+    /// The actual value at the predicate path when the check fired.
+    /// Empty string when the path did not resolve or for compound predicates.
+    pub value: String,
 }
 
 /// The kind of check result.
@@ -175,6 +178,9 @@ impl Report {
 
             let _ = writeln!(buf, "{} {} at {}: {}", prefix, f.pattern, f.path, f.message);
 
+            if !f.value.is_empty() {
+                let _ = writeln!(buf, "       value: {}", f.value);
+            }
             if !f.diagnostic.is_empty() {
                 let _ = writeln!(buf, "       {}", f.diagnostic);
             }
@@ -249,6 +255,9 @@ impl Report {
             }
             if !f.flag.is_empty() {
                 let _ = write!(buf, ",\n      \"flag\": \"{}\"", json_escape(&f.flag));
+            }
+            if !f.value.is_empty() {
+                let _ = write!(buf, ",\n      \"value\": \"{}\"", json_escape(&f.value));
             }
             buf.push('\n');
             trailing_comma(buf, i, findings.len());

@@ -146,10 +146,10 @@
                 "right": {
                   "type": "matches",
                   "path": "$.purl",
-                  "pattern": "^pkg:(rpm/redhat|oci|maven|generic)/"
+                  "pattern": "^pkg:(rpm/redhat|oci|maven|generic|pypi|golang|npm|cargo|gem|nuget|cran|pub|hex|cocoapods|composer|conda|cpan|deb|docker|github|hackage|huggingface|swift)/"
                 }
               },
-              "message": "purl namespace must be rpm/redhat, oci, maven, or generic",
+              "message": "purl type must be a known package ecosystem",
               "diagnostics": ["rh-purl"]
             },
             {

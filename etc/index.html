@@ -105,6 +105,17 @@
       font-size: 0.8rem;
       color: #666;
     }
+    .file-btn {
+      padding: 0.2rem 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+      background: #fff;
+      color: #2563eb;
+    }
+    .file-btn:hover { background: #f0f4ff; }
     footer {
       margin-top: 2rem;
       padding-top: 1rem;
@@ -181,6 +192,9 @@
       <div class="label-row">
         <label>Rules</label>
         <span class="example-hint">
+          <select id="ruleset-picker">
+            <option value="">-- Load ruleset --</option>
+          </select>
           Example:
           <select id="example">
             <option value="basic">Basic fields</option>
@@ -211,6 +225,10 @@
     <div>
       <div class="label-row">
         <label for="document">Document</label>
+        <span class="example-hint">
+          <label class="file-btn" for="doc-file">Load file</label>
+          <input type="file" id="doc-file" accept=".json,.yaml,.yml,.xml,.spdx,.cdx" style="display:none">
+        </span>
       </div>
       <textarea id="document" rows="18"></textarea>
     </div>
@@ -856,6 +874,94 @@ The "license" field must equal "MIT".`,
     loadExample("basic");
 
     await init();
+
+    // --- Ruleset picker: load rulesets/ and testdata/ from server ---
+    const rulesetPicker = document.getElementById("ruleset-picker");
+
+    // Map ruleset filenames to their best matching test document
+    const rulesetTestdataMap = {
+      "csaf-2.0-mandatory.json":      { valid: "csaf-valid.json",              invalid: "csaf-invalid.json" },
+      "cyclonedx-min.json":            { valid: "cyclonedx-valid.json",         invalid: "cyclonedx-invalid.json" },
+      "cyclonedx-quality.json":        { valid: "cyclonedx-quality-valid.json", invalid: "cyclonedx-quality-invalid.json" },
+      "osv.json":                      { valid: "osv-valid.json",               invalid: "osv-invalid.json" },
+      "purl-validation.json":          { valid: "cyclonedx-valid.json",         invalid: "cyclonedx-invalid.json" },
+      "redhat-csaf-vex.json":          { valid: "redhat-vex-valid.json",        invalid: "redhat-vex-invalid.json" },
+      "redhat-sbom-cyclonedx.json":    { valid: "redhat-sbom-cdx-valid.json",   invalid: "cyclonedx-invalid.json" },
+      "redhat-sbom-spdx.json":         { valid: "redhat-sbom-spdx-valid.json",  invalid: "spdx-invalid.json" },
+      "spdx-min.json":                 { valid: "spdx-valid.json",              invalid: "spdx-invalid.json" },
+      "spdx-ntia.json":                { valid: "spdx-ntia-valid.json",         invalid: "spdx-ntia-invalid.json" },
+      "vex-coherence.json":            { valid: "vex-valid.json",               invalid: "vex-invalid.json" },
+    };
+
+    // Pretty names for rulesets
+    const rulesetLabels = {
+      "csaf-2.0-mandatory.json":      "CSAF 2.0 Mandatory",
+      "cyclonedx-min.json":            "CycloneDX Minimum",
+      "cyclonedx-quality.json":        "CycloneDX Quality + NTIA",
+      "osv.json":                      "OSV Record",
+      "purl-validation.json":          "Package URL (purl)",
+      "redhat-csaf-vex.json":          "Red Hat CSAF VEX",
+      "redhat-sbom-cyclonedx.json":    "Red Hat SBOM (CycloneDX)",
+      "redhat-sbom-spdx.json":         "Red Hat SBOM (SPDX)",
+      "spdx-min.json":                 "SPDX Minimum",
+      "spdx-ntia.json":                "SPDX NTIA + Quality",
+      "vex-coherence.json":            "VEX Coherence",
+    };
+
+    try {
+      const manifest = await fetch("rulesets/manifest.json").then(r => r.ok ? r.json() : []);
+      for (const path of manifest) {
+        const filename = path.split("/").pop();
+        const opt = document.createElement("option");
+        opt.value = filename;
+        opt.textContent = rulesetLabels[filename] || filename.replace(".json", "");
+        rulesetPicker.appendChild(opt);
+      }
+    } catch (_) {
+      // Rulesets not available (local dev without build) -- picker stays empty
+    }
+
+    rulesetPicker.addEventListener("change", async () => {
+      const filename = rulesetPicker.value;
+      if (!filename) return;
+
+      try {
+        // Load ruleset
+        const rules = await fetch(`rulesets/${filename}`).then(r => r.text());
+        rulesJsonEl.value = rules;
+        switchTab("json");
+        errorEl.textContent = "";
+        outputEl.value = "";
+
+        // Load matching test document (prefer valid)
+        const mapping = rulesetTestdataMap[filename];
+        if (mapping) {
+          try {
+            const doc = await fetch(`testdata/${mapping.valid}`).then(r => r.text());
+            documentEl.value = doc;
+          } catch (_) {
+            documentEl.value = "{}";
+          }
+        }
+      } catch (e) {
+        errorEl.textContent = `Failed to load ruleset: ${e}`;
+      }
+    });
+
+    // --- File loader for document textarea ---
+    document.getElementById("doc-file").addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        documentEl.value = reader.result;
+        errorEl.textContent = "";
+        outputEl.value = "";
+      };
+      reader.onerror = () => { errorEl.textContent = `Failed to read ${file.name}`; };
+      reader.readAsText(file);
+      e.target.value = "";  // allow re-selecting the same file
+    });
 
     document.getElementById("validate").addEventListener("click", () => {
       const rules = allTextareas[tabNames.indexOf(activeTab)].value;

@@ -226,6 +226,12 @@ fn eval_check(
         .collect::<Vec<_>>()
         .join("; ");
 
+    let value = if fired {
+        extract_predicate_value(&check.test, context_node)
+    } else {
+        String::new()
+    };
+
     CheckResult {
         kind,
         fired,
@@ -236,6 +242,7 @@ fn eval_check(
         message: check.message.clone(),
         diagnostic: diagnostic_text,
         flag: check.flag.clone(),
+        value,
     }
 }
 
@@ -310,6 +317,53 @@ fn value_as_string(v: &Value) -> String {
         Value::Bool(b) => b.to_string(),
         Value::Null => "null".to_owned(),
         other => other.to_string(),
+    }
+}
+
+/// Extract the value at the innermost predicate path for diagnostics.
+/// Returns the value as a compact string, or describes absence.
+fn extract_predicate_value(pred: &Predicate, node: &Value) -> String {
+    match pred {
+        Predicate::Exists { path }
+        | Predicate::NotExists { path }
+        | Predicate::Equals { path, .. }
+        | Predicate::Matches { path, .. }
+        | Predicate::Named { path, .. } => {
+            let nodes = query_path_ref(path, node);
+            if nodes.is_empty() {
+                "<missing>".to_owned()
+            } else {
+                truncate_value(&value_as_string(nodes[0]), 120)
+            }
+        }
+        Predicate::Count { path, .. } => {
+            let count = query_path_ref(path, node).len();
+            format!("<count={count}>")
+        }
+        Predicate::And { left, right } => {
+            let lv = extract_predicate_value(left, node);
+            if lv != "<missing>" && !lv.starts_with('<') {
+                return lv;
+            }
+            extract_predicate_value(right, node)
+        }
+        Predicate::Or { left, right } => {
+            let lv = extract_predicate_value(left, node);
+            if lv == "<missing>" {
+                return extract_predicate_value(right, node);
+            }
+            lv
+        }
+        Predicate::Not { inner } => extract_predicate_value(inner, node),
+        Predicate::Var { .. } => String::new(),
+    }
+}
+
+fn truncate_value(s: &str, max: usize) -> String {
+    if s.len() <= max {
+        s.to_owned()
+    } else {
+        format!("{}...", &s[..max])
     }
 }
 

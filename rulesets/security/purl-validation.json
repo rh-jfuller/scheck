@@ -1,0 +1,990 @@
+{
+  "title": "Package URL (purl) Validation",
+  "description": "Package URL validation for SPDX and CycloneDX SBOMs per the purl spec (https://github.com/package-url/purl-spec) and packageurl crate v0.7.0 type rules.",
+  "diagnostics": [
+    { "id": "purl-scheme", "message": "purl scheme and structure" },
+    { "id": "purl-type", "message": "purl type validation" },
+    { "id": "purl-name", "message": "purl name validation" },
+    { "id": "purl-version", "message": "purl version validation" },
+    { "id": "purl-qualifiers", "message": "purl qualifier validation" },
+    { "id": "purl-namespace", "message": "purl namespace validation" },
+    { "id": "purl-presence", "message": "purl presence check" },
+    { "id": "pkg-integrity", "message": "package integrity check" }
+  ],
+  "default_phase": "all",
+  "phases": [
+    {
+      "name": "all",
+      "active_patterns": [
+        "cdx-purl-presence",
+        "cdx-purl-scheme",
+        "cdx-purl-type",
+        "cdx-purl-name",
+        "cdx-purl-version",
+        "cdx-purl-qualifiers",
+        "cdx-purl-namespace",
+        "cdx-nested-purl",
+        "cdx-checksum",
+        "spdx-purl-presence",
+        "spdx-purl-ref",
+        "spdx-checksum"
+      ]
+    },
+    {
+      "name": "cdx",
+      "active_patterns": [
+        "cdx-purl-presence",
+        "cdx-purl-scheme",
+        "cdx-purl-type",
+        "cdx-purl-name",
+        "cdx-purl-version",
+        "cdx-purl-qualifiers",
+        "cdx-purl-namespace",
+        "cdx-nested-purl",
+        "cdx-checksum"
+      ]
+    },
+    {
+      "name": "spdx",
+      "active_patterns": [
+        "spdx-purl-presence",
+        "spdx-purl-ref",
+        "spdx-checksum"
+      ]
+    }
+  ],
+  "patterns": [
+    {
+      "name": "cdx-purl-presence",
+      "title": "CycloneDX components should have a purl",
+      "rules": [
+        {
+          "context": "$.components[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.purl" },
+              "message": "component should have a purl for vulnerability correlation",
+              "severity": "warning",
+              "diagnostics": ["purl-presence"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cdx-purl-scheme",
+      "title": "CycloneDX purl scheme and structural checks (packageurl crate: parse_scheme)",
+      "rules": [
+        {
+          "context": "$.components[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": {
+                  "type": "matches",
+                  "path": "$.purl",
+                  "pattern": "^pkg:"
+                }
+              },
+              "message": "purl must use pkg: scheme (MissingScheme / InvalidScheme)",
+              "diagnostics": ["purl-scheme"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.purl",
+                    "pattern": "\\s"
+                  }
+                }
+              },
+              "message": "purl must not contain whitespace",
+              "diagnostics": ["purl-scheme"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.purl",
+                    "pattern": "#.*(\\.\\.(/|$)|\\.(/|$))"
+                  }
+                }
+              },
+              "message": "purl subpath must not contain . or .. segments (InvalidSubpathSegment)",
+              "severity": "error",
+              "diagnostics": ["purl-scheme"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cdx-purl-type",
+      "title": "CycloneDX purl type validation (packageurl crate: is_type_valid, parse_type)",
+      "rules": [
+        {
+          "context": "$.components[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": {
+                  "type": "matches",
+                  "path": "$.purl",
+                  "pattern": "^pkg:[a-zA-Z][a-zA-Z0-9.+\\-]*/"
+                }
+              },
+              "message": "purl type must start with a letter and contain only [a-zA-Z0-9.+-], followed by / (MissingType / InvalidType)",
+              "diagnostics": ["purl-type"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.purl",
+                    "pattern": "^pkg:[0-9]"
+                  }
+                }
+              },
+              "message": "purl type must not start with a digit (is_type_valid)",
+              "diagnostics": ["purl-type"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": {
+                  "type": "matches",
+                  "path": "$.purl",
+                  "pattern": "^pkg:(apk|bitbucket|bitnami|cargo|chrome-extension|cocoapods|composer|conan|conda|cpan|cran|deb|docker|gem|generic|github|golang|gradle|guix|hackage|hex|huggingface|julia|maven|mlflow|npm|nuget|oci|opam|otp|pub|pypi|qpkg|rpm|swift|swid|vcpkg|vscode-extension|wolfi|alpine)/"
+                }
+              },
+              "message": "purl type is not a known type from the purl spec type registry",
+              "severity": "warning",
+              "diagnostics": ["purl-type"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cdx-purl-name",
+      "title": "CycloneDX purl name validation (packageurl crate: parse_name)",
+      "rules": [
+        {
+          "context": "$.components[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.purl",
+                    "pattern": "^pkg:[^/]+/$"
+                  }
+                }
+              },
+              "message": "purl must have a non-empty name after type/ (MissingName)",
+              "diagnostics": ["purl-name"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.purl",
+                    "pattern": "^pkg:[^/]+//$"
+                  }
+                }
+              },
+              "message": "purl must not have empty path segments (MissingName)",
+              "diagnostics": ["purl-name"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cdx-purl-version",
+      "title": "CycloneDX purl version checks",
+      "rules": [
+        {
+          "context": "$.components[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": {
+                  "type": "matches",
+                  "path": "$.purl",
+                  "pattern": "@[^?#]+([?#]|$)"
+                }
+              },
+              "message": "purl should include a version (@version) for reproducibility",
+              "severity": "warning",
+              "diagnostics": ["purl-version"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.purl",
+                    "pattern": "@([?#]|$)"
+                  }
+                }
+              },
+              "message": "purl must not have an empty version (@ followed by nothing, ? or #)",
+              "diagnostics": ["purl-version"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cdx-purl-qualifiers",
+      "title": "CycloneDX purl qualifier validation (packageurl crate: is_qualifier_key_valid, PercentCodec)",
+      "rules": [
+        {
+          "context": "$.components[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.purl",
+                    "pattern": "\\?[0-9]"
+                  }
+                }
+              },
+              "message": "purl qualifier key must not start with a digit (InvalidKey)",
+              "diagnostics": ["purl-qualifiers"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.purl",
+                    "pattern": "\\?=|&="
+                  }
+                }
+              },
+              "message": "purl qualifier must not have empty key (InvalidKey)",
+              "diagnostics": ["purl-qualifiers"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.purl",
+                    "pattern": "=[^&]*[\\[\\]{}|\\\\^`<>]"
+                  }
+                }
+              },
+              "message": "purl qualifier value contains characters that must be percent-encoded",
+              "diagnostics": ["purl-qualifiers"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.purl",
+                    "pattern": "=[^&#]*://[^&#]*[^%][^0-9A-Fa-f]"
+                  }
+                }
+              },
+              "message": "purl qualifier value appears to contain an unencoded URL (repository_url, download_url, etc. must be percent-encoded per purl spec)",
+              "severity": "warning",
+              "diagnostics": ["purl-qualifiers"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.purl",
+                    "pattern": "=[^&#]*[ ]"
+                  }
+                }
+              },
+              "message": "purl qualifier value contains unencoded space (must use %20)",
+              "diagnostics": ["purl-qualifiers"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.purl",
+                    "pattern": "%([^0-9A-Fa-f]|[0-9A-Fa-f][^0-9A-Fa-f]|$)"
+                  }
+                }
+              },
+              "message": "purl contains invalid percent-encoding (% must be followed by two hex digits)",
+              "diagnostics": ["purl-qualifiers"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.purl",
+                    "pattern": "[?&][^=&#]*[^a-zA-Z0-9._\\-=&#]"
+                  }
+                }
+              },
+              "message": "purl qualifier key contains invalid character (must be [a-zA-Z0-9._-] per is_qualifier_key_valid)",
+              "severity": "warning",
+              "diagnostics": ["purl-qualifiers"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cdx-purl-namespace",
+      "title": "CycloneDX purl per-type namespace rules (packageurl crate: TypeRules)",
+      "rules": [
+        {
+          "context": "$.components[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.purl",
+                    "pattern": "^pkg:(cargo|bitnami|cocoapods|conda|cran|gem|hackage|julia|mlflow|nuget|oci|otp|pub|pypi|vcpkg|chrome-extension)/[^@?#]+/"
+                  }
+                }
+              },
+              "message": "purl type prohibits namespace but namespace segments found (TypeProhibitsNamespace)",
+              "severity": "warning",
+              "diagnostics": ["purl-namespace"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.purl",
+                    "pattern": "^pkg:(composer|cpan|huggingface|swift|vscode-extension)/[^/]+(@|\\?|$)"
+                  }
+                }
+              },
+              "message": "purl type requires a namespace but none found (TypeRequiresNamespace)",
+              "severity": "warning",
+              "diagnostics": ["purl-namespace"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cdx-nested-purl",
+      "title": "CycloneDX nested component purl validation",
+      "rules": [
+        {
+          "context": "$.components[*].components[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.purl" },
+              "message": "nested component should have a purl",
+              "severity": "warning",
+              "diagnostics": ["purl-presence"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.purl" },
+                "right": {
+                  "type": "matches",
+                  "path": "$.purl",
+                  "pattern": "^pkg:[a-zA-Z][a-zA-Z0-9.+\\-]*/"
+                }
+              },
+              "message": "nested component purl must have valid pkg: scheme and type",
+              "diagnostics": ["purl-scheme"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "spdx-purl-presence",
+      "title": "SPDX packages should have purl externalRefs",
+      "rules": [
+        {
+          "context": "$.packages[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.externalRefs" },
+              "message": "package should have externalRefs containing a purl for vulnerability correlation",
+              "severity": "warning",
+              "diagnostics": ["purl-presence"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "spdx-purl-ref",
+      "title": "SPDX externalRef purl validation (packageurl crate rules)",
+      "rules": [
+        {
+          "context": "$.packages[*].externalRefs[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "not",
+                  "inner": { "type": "equals", "path": "$.referenceType", "value": "purl" }
+                },
+                "right": {
+                  "type": "matches",
+                  "path": "$.referenceLocator",
+                  "pattern": "^pkg:"
+                }
+              },
+              "message": "referenceLocator must use pkg: scheme (MissingScheme / InvalidScheme)",
+              "diagnostics": ["purl-scheme"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "not",
+                  "inner": { "type": "equals", "path": "$.referenceType", "value": "purl" }
+                },
+                "right": {
+                  "type": "matches",
+                  "path": "$.referenceLocator",
+                  "pattern": "^pkg:[a-zA-Z][a-zA-Z0-9.+\\-]*/"
+                }
+              },
+              "message": "purl type must start with a letter and contain only [a-zA-Z0-9.+-] (InvalidType)",
+              "diagnostics": ["purl-type"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "not",
+                  "inner": { "type": "equals", "path": "$.referenceType", "value": "purl" }
+                },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.referenceLocator",
+                    "pattern": "^pkg:[0-9]"
+                  }
+                }
+              },
+              "message": "purl type must not start with a digit (is_type_valid)",
+              "diagnostics": ["purl-type"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "not",
+                  "inner": { "type": "equals", "path": "$.referenceType", "value": "purl" }
+                },
+                "right": {
+                  "type": "matches",
+                  "path": "$.referenceLocator",
+                  "pattern": "^pkg:(apk|bitbucket|bitnami|cargo|chrome-extension|cocoapods|composer|conan|conda|cpan|cran|deb|docker|gem|generic|github|golang|gradle|guix|hackage|hex|huggingface|julia|maven|mlflow|npm|nuget|oci|opam|otp|pub|pypi|qpkg|rpm|swift|swid|vcpkg|vscode-extension|wolfi|alpine)/"
+                }
+              },
+              "message": "purl type is not a known type from the purl spec type registry",
+              "severity": "warning",
+              "diagnostics": ["purl-type"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "not",
+                  "inner": { "type": "equals", "path": "$.referenceType", "value": "purl" }
+                },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.referenceLocator",
+                    "pattern": "^pkg:[^/]+/$"
+                  }
+                }
+              },
+              "message": "purl must have a non-empty name after type/ (MissingName)",
+              "diagnostics": ["purl-name"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "not",
+                  "inner": { "type": "equals", "path": "$.referenceType", "value": "purl" }
+                },
+                "right": {
+                  "type": "matches",
+                  "path": "$.referenceLocator",
+                  "pattern": "@[^?#]+([?#]|$)"
+                }
+              },
+              "message": "purl should include a version (@version) for reproducibility",
+              "severity": "warning",
+              "diagnostics": ["purl-version"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "not",
+                  "inner": { "type": "equals", "path": "$.referenceType", "value": "purl" }
+                },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.referenceLocator",
+                    "pattern": "@([?#]|$)"
+                  }
+                }
+              },
+              "message": "purl must not have an empty version (@ followed by nothing, ? or #)",
+              "diagnostics": ["purl-version"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "not",
+                  "inner": { "type": "equals", "path": "$.referenceType", "value": "purl" }
+                },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.referenceLocator",
+                    "pattern": "\\s"
+                  }
+                }
+              },
+              "message": "purl must not contain whitespace",
+              "diagnostics": ["purl-scheme"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "not",
+                  "inner": { "type": "equals", "path": "$.referenceType", "value": "purl" }
+                },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.referenceLocator",
+                    "pattern": "\\?[0-9]"
+                  }
+                }
+              },
+              "message": "purl qualifier key must not start with a digit (InvalidKey)",
+              "diagnostics": ["purl-qualifiers"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "not",
+                  "inner": { "type": "equals", "path": "$.referenceType", "value": "purl" }
+                },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.referenceLocator",
+                    "pattern": "=[^&]*[\\[\\]{}|\\\\^`<>]"
+                  }
+                }
+              },
+              "message": "purl qualifier value contains characters that must be percent-encoded",
+              "diagnostics": ["purl-qualifiers"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "not",
+                  "inner": { "type": "equals", "path": "$.referenceType", "value": "purl" }
+                },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.referenceLocator",
+                    "pattern": "=[^&#]*[ ]"
+                  }
+                }
+              },
+              "message": "purl qualifier value contains unencoded space (must use %20)",
+              "diagnostics": ["purl-qualifiers"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "not",
+                  "inner": { "type": "equals", "path": "$.referenceType", "value": "purl" }
+                },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.referenceLocator",
+                    "pattern": "%([^0-9A-Fa-f]|[0-9A-Fa-f][^0-9A-Fa-f]|$)"
+                  }
+                }
+              },
+              "message": "purl contains invalid percent-encoding (% must be followed by two hex digits)",
+              "diagnostics": ["purl-qualifiers"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "not",
+                  "inner": { "type": "equals", "path": "$.referenceType", "value": "purl" }
+                },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.referenceLocator",
+                    "pattern": "[?&][^=&#]*[^a-zA-Z0-9._\\-=&#]"
+                  }
+                }
+              },
+              "message": "purl qualifier key contains invalid character (must be [a-zA-Z0-9._-] per is_qualifier_key_valid)",
+              "severity": "warning",
+              "diagnostics": ["purl-qualifiers"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "not",
+                  "inner": { "type": "equals", "path": "$.referenceType", "value": "purl" }
+                },
+                "right": {
+                  "type": "equals",
+                  "path": "$.referenceCategory",
+                  "value": "PACKAGE-MANAGER"
+                }
+              },
+              "message": "purl externalRef should have referenceCategory PACKAGE-MANAGER",
+              "severity": "warning",
+              "diagnostics": ["purl-scheme"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "not",
+                  "inner": { "type": "equals", "path": "$.referenceType", "value": "purl" }
+                },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.referenceLocator",
+                    "pattern": "^pkg:(cargo|bitnami|cocoapods|conda|cran|gem|hackage|julia|mlflow|nuget|oci|otp|pub|pypi|vcpkg|chrome-extension)/[^@?#]+/"
+                  }
+                }
+              },
+              "message": "purl type prohibits namespace but namespace segments found (TypeProhibitsNamespace)",
+              "severity": "warning",
+              "diagnostics": ["purl-namespace"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": {
+                  "type": "not",
+                  "inner": { "type": "equals", "path": "$.referenceType", "value": "purl" }
+                },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "matches",
+                    "path": "$.referenceLocator",
+                    "pattern": "^pkg:(composer|cpan|huggingface|swift|vscode-extension)/[^/]+(@|\\?|$)"
+                  }
+                }
+              },
+              "message": "purl type requires a namespace but none found (TypeRequiresNamespace)",
+              "severity": "warning",
+              "diagnostics": ["purl-namespace"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cdx-checksum",
+      "title": "CycloneDX component checksum/hash validation",
+      "rules": [
+        {
+          "context": "$.components[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.hashes" },
+              "message": "component should have hashes for integrity verification",
+              "severity": "warning",
+              "diagnostics": ["pkg-integrity"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.hashes" },
+                "right": {
+                  "type": "count",
+                  "path": "$.hashes[*]",
+                  "cmp": ">=",
+                  "expected": 1
+                }
+              },
+              "message": "component hashes array must not be empty",
+              "diagnostics": ["pkg-integrity"]
+            }
+          ]
+        },
+        {
+          "context": "$.components[*].hashes[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.alg" },
+              "message": "hash entry must have alg field",
+              "diagnostics": ["pkg-integrity"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.content" },
+              "message": "hash entry must have content field",
+              "diagnostics": ["pkg-integrity"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.content" },
+                "right": {
+                  "type": "matches",
+                  "path": "$.content",
+                  "pattern": "^[0-9a-fA-F]{32,128}$"
+                }
+              },
+              "message": "hash content must be a hex string (32-128 chars for MD5 through SHA-512)",
+              "diagnostics": ["pkg-integrity"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.alg" },
+                "right": {
+                  "type": "matches",
+                  "path": "$.alg",
+                  "pattern": "^(MD5|SHA-1|SHA-256|SHA-384|SHA-512|SHA3-256|SHA3-384|SHA3-512|BLAKE2b-256|BLAKE2b-384|BLAKE2b-512|BLAKE3)$"
+                }
+              },
+              "message": "hash algorithm should be a known CycloneDX hash algorithm",
+              "severity": "warning",
+              "diagnostics": ["pkg-integrity"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "spdx-checksum",
+      "title": "SPDX package checksum validation",
+      "rules": [
+        {
+          "context": "$.packages[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.checksums" },
+              "message": "package should have checksums for integrity verification",
+              "severity": "warning",
+              "diagnostics": ["pkg-integrity"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.checksums" },
+                "right": {
+                  "type": "count",
+                  "path": "$.checksums[*]",
+                  "cmp": ">=",
+                  "expected": 1
+                }
+              },
+              "message": "package checksums array must not be empty",
+              "diagnostics": ["pkg-integrity"]
+            }
+          ]
+        },
+        {
+          "context": "$.packages[*].checksums[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.algorithm" },
+              "message": "checksum entry must have algorithm field",
+              "diagnostics": ["pkg-integrity"]
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.checksumValue" },
+              "message": "checksum entry must have checksumValue field",
+              "diagnostics": ["pkg-integrity"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.checksumValue" },
+                "right": {
+                  "type": "matches",
+                  "path": "$.checksumValue",
+                  "pattern": "^[0-9a-fA-F]{32,128}$"
+                }
+              },
+              "message": "checksumValue must be a hex string (32-128 chars for MD5 through SHA-512)",
+              "diagnostics": ["pkg-integrity"]
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.algorithm" },
+                "right": {
+                  "type": "matches",
+                  "path": "$.algorithm",
+                  "pattern": "^(MD5|SHA1|SHA256|SHA384|SHA512|SHA3-256|SHA3-384|SHA3-512|BLAKE2b-256|BLAKE2b-384|BLAKE2b-512|BLAKE3|ADLER32|MD2|MD4|MD6)$"
+                }
+              },
+              "message": "checksum algorithm should be a known SPDX algorithm",
+              "severity": "warning",
+              "diagnostics": ["pkg-integrity"]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

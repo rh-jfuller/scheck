@@ -232,7 +232,7 @@
               "test": {
                 "type": "matches",
                 "path": "$.SPDXID",
-                "pattern": "^SPDXRef-[a-zA-Z0-9._-]+$"
+                "pattern": "^SPDXRef-[a-zA-Z0-9._/@:-]+$"
               },
               "message": "package.SPDXID must match SPDXRef-[idstring] format"
             },

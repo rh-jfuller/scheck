@@ -33,10 +33,15 @@ jobs:
 
       - name: Assemble site
         run: |
-          mkdir -p _site/pkg
+          mkdir -p _site/pkg _site/rulesets _site/testdata
           cp etc/index.html _site/
           cp pkg/scheck.js pkg/scheck_bg.wasm _site/pkg/
           cp pkg/scheck.d.ts pkg/scheck_bg.wasm.d.ts _site/pkg/ 2>/dev/null || true
+          cp rulesets/security/*.json _site/rulesets/
+          cp etc/testdata/security/*.json _site/testdata/
+          # Generate manifest for the UI
+          (cd _site && find rulesets -name '*.json' | sort | jq -R -s 'split("\n") | map(select(. != ""))' > rulesets/manifest.json)
+          (cd _site && find testdata -name '*.json' | sort | jq -R -s 'split("\n") | map(select(. != ""))' > testdata/manifest.json)
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1

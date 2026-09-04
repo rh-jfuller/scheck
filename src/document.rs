@@ -48,7 +48,7 @@ pub fn from_json(input: &str) -> Result<Document, DocumentError> {
 ///
 /// Returns an error if the YAML is malformed.
 pub fn from_yaml(input: &str) -> Result<Document, DocumentError> {
-    let root: serde_json::Value = serde_yml::from_str(input)
+    let root: serde_json::Value = serde_norway::from_str(input)
         .map_err(|e| DocumentError::Parse(format!("invalid YAML: {e}")))?;
     Ok(Document {
         root,

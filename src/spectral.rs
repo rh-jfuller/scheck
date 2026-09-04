@@ -69,7 +69,7 @@ fn parse_input(input: &str) -> Result<Value, String> {
     if trimmed.starts_with('{') {
         serde_json::from_str(input).map_err(|e| format!("JSON parse error: {e}"))
     } else {
-        serde_yml::from_str(input).map_err(|e| format!("YAML parse error: {e}"))
+        serde_norway::from_str(input).map_err(|e| format!("YAML parse error: {e}"))
     }
 }
 

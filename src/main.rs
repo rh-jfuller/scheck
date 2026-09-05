@@ -33,7 +33,7 @@ struct Cli {
 enum Command {
     /// Validate a document against one or more rule files
     Validate {
-        /// Document to validate (JSON or YAML)
+        /// Document to validate (JSON or YAML); use "-" to read from stdin
         document: String,
 
         /// Rule file(s) -- repeat for multiple independent rulesets
@@ -63,6 +63,14 @@ enum Command {
             value_parser = ["text", "json", "sarif"]
         )]
         format: String,
+
+        /// Minimum severity that causes a non-zero exit code
+        #[arg(
+            long,
+            default_value = "error",
+            value_parser = ["fatal", "error", "warning", "info", "never"]
+        )]
+        fail_on: String,
     },
 
     /// Parse and validate a rule file (check for syntax errors)
@@ -89,24 +97,40 @@ enum Command {
     },
 }
 
+/// Exit code returned when validation finds issues at or above the
+/// `--fail-on` threshold.
+#[cfg(feature = "cli")]
+const EXIT_FINDINGS: u8 = 1;
+
+/// Exit code returned when the tool itself fails (I/O, parse errors).
+#[cfg(feature = "cli")]
+const EXIT_TOOL_ERROR: u8 = 2;
+
+/// Result of running a command: the text to print plus the exit code.
+#[cfg(feature = "cli")]
+struct Outcome {
+    output: String,
+    code: ExitCode,
+}
+
 fn main() -> ExitCode {
     #[cfg(feature = "cli")]
     {
         let cli = Cli::parse();
         match run(&cli) {
-            Ok(output) => {
+            Ok(outcome) => {
                 #[expect(clippy::print_stdout)]
                 {
-                    print!("{output}");
+                    print!("{}", outcome.output);
                 }
-                ExitCode::SUCCESS
+                outcome.code
             }
             Err(e) => {
                 #[expect(clippy::print_stderr)]
                 {
                     eprintln!("error: {e}");
                 }
-                ExitCode::FAILURE
+                ExitCode::from(EXIT_TOOL_ERROR)
             }
         }
     }
@@ -118,7 +142,7 @@ fn main() -> ExitCode {
 }
 
 #[cfg(feature = "cli")]
-fn run(cli: &Cli) -> Result<String, String> {
+fn run(cli: &Cli) -> Result<Outcome, String> {
     match &cli.command {
         Command::Validate {
             document,
@@ -127,6 +151,7 @@ fn run(cli: &Cli) -> Result<String, String> {
             phase,
             context,
             format,
+            fail_on,
         } => run_validate(
             document,
             rules,
@@ -134,9 +159,34 @@ fn run(cli: &Cli) -> Result<String, String> {
             phase.as_deref(),
             context.as_deref(),
             format,
+            fail_on,
         ),
         Command::Check { rules, rule_format } => run_check(rules, rule_format.as_deref()),
         Command::Convert { input, from } => run_convert(input, from),
+    }
+}
+
+/// Parse the `--fail-on` threshold. `None` means never fail on findings.
+#[cfg(feature = "cli")]
+fn parse_fail_on(value: &str) -> Option<scheck::Severity> {
+    match value {
+        "fatal" => Some(scheck::Severity::Fatal),
+        "warning" => Some(scheck::Severity::Warning),
+        "info" => Some(scheck::Severity::Info),
+        "never" => None,
+        _ => Some(scheck::Severity::Error),
+    }
+}
+
+/// Compute the exit code for a report given a `--fail-on` threshold.
+#[cfg(feature = "cli")]
+fn exit_code_for(report: &scheck::Report, fail_on: &str) -> ExitCode {
+    let Some(threshold) = parse_fail_on(fail_on) else {
+        return ExitCode::SUCCESS;
+    };
+    match report.worst_severity() {
+        Some(worst) if worst >= threshold => ExitCode::from(EXIT_FINDINGS),
+        _ => ExitCode::SUCCESS,
     }
 }
 
@@ -181,6 +231,37 @@ fn read_file_bounded(path: &str) -> Result<String, String> {
     std::fs::read_to_string(path).map_err(|e| format!("cannot read {path}: {e}"))
 }
 
+/// Read a document from a file path, or from stdin when `path` is `-`.
+#[cfg(feature = "cli")]
+fn read_document(path: &str) -> Result<String, String> {
+    if path == "-" {
+        read_stdin_bounded()
+    } else {
+        read_file_bounded(path)
+    }
+}
+
+/// Read all of stdin into a string, enforcing the configured size limit.
+#[cfg(feature = "cli")]
+fn read_stdin_bounded() -> Result<String, String> {
+    use std::io::Read;
+
+    let limit = max_file_size();
+    let mut buf = String::new();
+    let read = std::io::stdin()
+        .lock()
+        .take(limit + 1)
+        .read_to_string(&mut buf)
+        .map_err(|e| format!("cannot read stdin: {e}"))?;
+    if read as u64 > limit {
+        return Err(format!(
+            "stdin: input too large (max {limit} bytes; \
+             override with SCHECK_MAX_FILE_SIZE)"
+        ));
+    }
+    Ok(buf)
+}
+
 #[cfg(feature = "cli")]
 fn run_validate(
     doc_path: &str,
@@ -189,8 +270,9 @@ fn run_validate(
     phase: Option<&str>,
     context: Option<&str>,
     format: &str,
-) -> Result<String, String> {
-    let doc_src = read_file_bounded(doc_path)?;
+    fail_on: &str,
+) -> Result<Outcome, String> {
+    let doc_src = read_document(doc_path)?;
     let doc = scheck::load(&doc_src).map_err(|e| format!("Document error: {e}"))?;
 
     let mut schemas = Vec::new();
@@ -225,33 +307,38 @@ fn run_validate(
         scheck::validate_all_phase(&schema_refs, &doc, phase_str)
     };
 
+    let sarif_uri = if doc_path == "-" { "stdin" } else { doc_path };
     let output = match format {
         "json" => report.to_json(),
-        "sarif" => report.to_sarif(doc_path),
+        "sarif" => report.to_sarif(sarif_uri),
         _ => report.to_text(),
     };
 
-    Ok(output)
+    let code = exit_code_for(&report, fail_on);
+    Ok(Outcome { output, code })
 }
 
 #[cfg(feature = "cli")]
-fn run_check(rules_path: &str, rule_format: Option<&str>) -> Result<String, String> {
+fn run_check(rules_path: &str, rule_format: Option<&str>) -> Result<Outcome, String> {
     let rules_src = read_file_bounded(rules_path)?;
 
     let fmt = detect_format(rules_path, rule_format);
     let schema = load_schema(&rules_src, fmt)?;
 
-    Ok(format!(
-        "OK: schema \"{}\" — {} pattern(s), {} phase(s) [{}]\n",
-        schema.title,
-        schema.patterns.len(),
-        schema.phases.len(),
-        fmt,
-    ))
+    Ok(Outcome {
+        output: format!(
+            "OK: schema \"{}\" — {} pattern(s), {} phase(s) [{}]\n",
+            schema.title,
+            schema.patterns.len(),
+            schema.phases.len(),
+            fmt,
+        ),
+        code: ExitCode::SUCCESS,
+    })
 }
 
 #[cfg(feature = "cli")]
-fn run_convert(input_path: &str, from: &str) -> Result<String, String> {
+fn run_convert(input_path: &str, from: &str) -> Result<Outcome, String> {
     use std::fmt::Write;
 
     let src = read_file_bounded(input_path)?;
@@ -273,7 +360,10 @@ fn run_convert(input_path: &str, from: &str) -> Result<String, String> {
             output.push_str(&json);
             output.push('\n');
 
-            Ok(output)
+            Ok(Outcome {
+                output,
+                code: ExitCode::SUCCESS,
+            })
         }
         other => Err(format!("unknown source format: {other}")),
     }

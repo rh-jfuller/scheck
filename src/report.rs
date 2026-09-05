@@ -29,6 +29,8 @@ pub struct Report {
 pub struct FiredRule {
     pub rule_id: String,
     pub pattern: String,
+    /// Concrete normalized location of the matched context node
+    /// (e.g. `$['items'][0]`), pinpointing where the rule fired.
     pub context_path: String,
 }
 
@@ -43,6 +45,9 @@ pub struct CheckResult {
     pub fired: bool,
     pub rule_id: String,
     pub pattern: String,
+    /// Concrete normalized location of the matched context node
+    /// (e.g. `$['items'][0]`), pinpointing where the check fired
+    /// rather than the static rule context expression.
     pub path: String,
     pub severity: Severity,
     pub message: String,
@@ -140,6 +145,17 @@ impl Report {
     #[must_use]
     pub fn info_count(&self) -> usize {
         self.count_findings(Severity::Info)
+    }
+
+    /// The highest severity among all fired findings, or `None`
+    /// when nothing fired. Useful for computing process exit codes.
+    #[must_use]
+    pub fn worst_severity(&self) -> Option<Severity> {
+        self.results
+            .iter()
+            .filter(|r| r.fired)
+            .map(|r| r.severity)
+            .max()
     }
 
     fn count_failures(&self, sev: Severity) -> usize {

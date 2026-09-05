@@ -126,19 +126,19 @@ fn validate_root(schema: &Schema, root: &Value, phase: &str) -> Report {
 
     for pattern in &active {
         for rule in &pattern.rules {
-            let context_nodes = query_path(&rule.context, root);
+            let context_nodes = query_path_located(&rule.context, root);
 
             if context_nodes.is_empty() {
                 continue;
             }
 
-            for ctx_node in &context_nodes {
+            for (ctx_node, ctx_location) in &context_nodes {
                 let bindings = resolve_lets(&rule.lets, ctx_node);
 
                 fired_rules.push(FiredRule {
                     rule_id: rule.id.clone(),
                     pattern: pattern.name.clone(),
-                    context_path: rule.context.clone(),
+                    context_path: ctx_location.clone(),
                 });
 
                 for check in &rule.checks {
@@ -149,7 +149,7 @@ fn validate_root(schema: &Schema, root: &Value, phase: &str) -> Report {
                         &rule.id,
                         &pattern.name,
                         schema,
-                        &rule.context,
+                        ctx_location,
                     );
                     results.push(result);
                 }
@@ -177,6 +177,26 @@ fn query_path(path_str: &str, value: &Value) -> Vec<Value> {
     };
     let node_list = path.query(value);
     node_list.all().into_iter().cloned().collect()
+}
+
+/// Query a `JSONPath` expression against a value, returning each
+/// cloned match paired with its concrete normalized location
+/// (e.g. `$['items'][0]`).
+///
+/// Unlike [`query_path`], this pinpoints *which* node matched when
+/// a context expression selects multiple nodes, so findings can
+/// report the exact location instead of the static rule context.
+fn query_path_located(path_str: &str, value: &Value) -> Vec<(Value, String)> {
+    if path_str == "$" {
+        return vec![(value.clone(), "$".to_owned())];
+    }
+    let Ok(path) = JsonPath::parse(path_str) else {
+        return vec![];
+    };
+    path.query_located(value)
+        .iter()
+        .map(|node| (node.node().clone(), node.location().to_string()))
+        .collect()
 }
 
 /// Query a `JSONPath` against a value, returning references.
@@ -679,6 +699,50 @@ mod tests {
         assert_eq!(report.error_count(), 1);
         assert_eq!(report.warning_count(), 1);
         assert_eq!(report.info_count(), 1);
+    }
+
+    #[test]
+    fn finding_pinpoints_concrete_node_path() {
+        let rules = r#"
+            schema "t" {
+                pattern "p" {
+                    rule context="$.items[*]" {
+                        assert exists("$.price")
+                            message="need price";
+                    }
+                }
+            }
+        "#;
+        let doc = make_doc(r#"{"items": [{"price": 1}, {"name": "x"}, {"name": "y"}]}"#);
+        let schema = crate::parser::parse_schema(rules).unwrap();
+        let report = validate(&schema, &doc);
+        let failures = report.failures();
+        assert_eq!(failures.len(), 2);
+        assert_eq!(failures[0].path, "$['items'][1]");
+        assert_eq!(failures[1].path, "$['items'][2]");
+    }
+
+    #[test]
+    fn fired_rules_track_concrete_paths() {
+        let rules = r#"
+            schema "t" {
+                pattern "p" {
+                    rule "r" context="$.items[*]" {
+                        assert exists("$.id")
+                            message="need id";
+                    }
+                }
+            }
+        "#;
+        let doc = make_doc(r#"{"items": [{"id": 1}, {"id": 2}]}"#);
+        let schema = crate::parser::parse_schema(rules).unwrap();
+        let report = validate(&schema, &doc);
+        let paths: Vec<&str> = report
+            .fired_rules
+            .iter()
+            .map(|fr| fr.context_path.as_str())
+            .collect();
+        assert_eq!(paths, vec!["$['items'][0]", "$['items'][1]"]);
     }
 
     #[test]

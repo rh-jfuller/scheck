@@ -80,7 +80,7 @@ Validate a document against one or more rule files
 Usage: scheck validate [OPTIONS] --rules <RULES> <DOCUMENT>
 
 Arguments:
-  <DOCUMENT>  Document to validate (JSON or YAML)
+  <DOCUMENT>  Document to validate (JSON or YAML); use "-" to read from stdin
 
 Options:
   -r, --rules <RULES>              Rule file(s) -- repeat for multiple independent rulesets
@@ -88,9 +88,33 @@ Options:
                                    [possible values: dsl, json, schematron, freetext]
   -p, --phase <PHASE>              Phase to activate (default: schema's `default_phase`)
   -c, --context <CONTEXT>          Validate only a document subtree at given path
-  -f, --format <FORMAT>            Output format [default: text] [possible values: text, json]
+  -f, --format <FORMAT>            Output format [default: text]
+                                   [possible values: text, json, sarif]
+      --fail-on <FAIL_ON>          Minimum severity that causes a non-zero exit code
+                                   [default: error]
+                                   [possible values: fatal, error, warning, info, never]
   -h, --help                       Print help
 ```
+
+Read the document from stdin with `-`:
+
+```
+$ cat advisory.json | scheck validate - --rules csaf-checks.json
+```
+
+### Exit codes
+
+`scheck validate` returns a distinct exit code so CI pipelines can gate on results:
+
+| Code | Meaning |
+|------|---------|
+| `0` | No findings at or above the `--fail-on` threshold |
+| `1` | Findings at or above the `--fail-on` threshold |
+| `2` | Tool error (I/O, parse failure, bad arguments) |
+
+The threshold defaults to `error`, so warnings and infos do not fail the build.
+Use `--fail-on warning` to be stricter, or `--fail-on never` to always exit `0`
+regardless of findings (report-only mode).
 
 Multiple `--rules` flags run each ruleset independently against the same
 document, combining all findings into one report:
@@ -467,6 +491,7 @@ Built-in validators for common formats, usable as `{"type": "named", "name": "<t
 
 - **text** (default) -- human-readable, one line per finding
 - **json** -- structured SVRL-inspired report with `fired-rules`, `failed-assert`, `successful-report`
+- **sarif** -- SARIF v2.1.0 for GitHub Code Scanning and other tooling
 
 ## As a library
 

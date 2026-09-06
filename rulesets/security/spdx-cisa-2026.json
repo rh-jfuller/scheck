@@ -1,0 +1,448 @@
+{
+  "title": "SPDX CISA 2026 SBOM Minimum Elements",
+  "description": "Data-field checks for the 2026 Minimum Elements for a Software Bill of Materials (SBOM), published 2026-07-29 by CISA, NSA, FBI and international partners, which updates and replaces the NTIA 2021 SBOM Minimum Elements. Mapped to SPDX 2.3. The 'minimum' phase enforces the 2026 required data fields; the 'strict' phase adds format and quality criteria. Some 2026 elements have no native SPDX 2.3 field and are not checked here (see limitations in the security README): SBOM Version, SBOM Author Signature, and SBOM Generation Context.",
+  "default_phase": "minimum",
+  "phases": [
+    {
+      "name": "minimum",
+      "active_patterns": [
+        "document-required",
+        "sbom-metadata",
+        "component-fields",
+        "component-integrity",
+        "component-identifiers",
+        "dependency-relationships"
+      ]
+    },
+    {
+      "name": "strict",
+      "active_patterns": [
+        "document-required",
+        "sbom-metadata",
+        "component-fields",
+        "component-integrity",
+        "component-identifiers",
+        "dependency-relationships",
+        "noassertion-filtering",
+        "tool-version",
+        "identifier-format",
+        "document-quality"
+      ]
+    }
+  ],
+  "patterns": [
+    {
+      "name": "document-required",
+      "title": "SPDX document + SBOM Data Format Name/Version",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.spdxVersion" },
+              "message": "spdxVersion is required (2026: SBOM Data Format Name/Version)",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.spdxVersion" },
+                "right": {
+                  "type": "matches",
+                  "path": "$.spdxVersion",
+                  "pattern": "^SPDX-2\\.[0-9]+$"
+                }
+              },
+              "message": "spdxVersion must be SPDX-2.x (2026: SBOM Data Format Version)"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.name" },
+              "message": "name is required",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.SPDXID" },
+              "message": "SPDXID is required",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.documentNamespace" },
+              "message": "documentNamespace is required (2026: unique identifier)",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.dataLicense" },
+              "message": "dataLicense is required",
+              "severity": "fatal"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "equals",
+                "path": "$.dataLicense",
+                "value": "CC0-1.0"
+              },
+              "message": "dataLicense must be CC0-1.0",
+              "severity": "fatal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sbom-metadata",
+      "title": "SBOM Author, Tool Name, and Timestamp",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.creationInfo" },
+              "message": "creationInfo is required",
+              "severity": "fatal"
+            }
+          ]
+        },
+        {
+          "context": "$.creationInfo",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.created" },
+              "message": "creationInfo.created is required (2026: SBOM Timestamp)"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.created" },
+                "right": { "type": "named", "name": "iso_datetime", "path": "$.created" }
+              },
+              "message": "creationInfo.created must be an RFC 3339/9557 datetime (2026: SBOM Timestamp)"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "count",
+                "path": "$.creators[*]",
+                "cmp": ">=",
+                "expected": 1
+              },
+              "message": "creationInfo.creators must have at least one entry"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.creators[*]",
+                "pattern": "^(Organization|Person):"
+              },
+              "message": "creationInfo.creators must include an Organization or Person (2026: SBOM Author)"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.creators[*]",
+                "pattern": "^Tool:"
+              },
+              "message": "creationInfo.creators should include a Tool (2026: SBOM Tool Name)",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "component-fields",
+      "title": "Component Name, Producer, Version, and License",
+      "rules": [
+        {
+          "context": "$.packages[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.SPDXID" },
+              "message": "package.SPDXID is required (2026: Component Identifiers)"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.name" },
+              "message": "package.name is required (2026: Component Name)"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.supplier" },
+              "message": "package.supplier is required (2026: Component Producer)"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.versionInfo" },
+              "message": "package.versionInfo is required (2026: Component Version; use NOASSERTION if unknown)"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "exists", "path": "$.licenseConcluded" },
+                "right": { "type": "exists", "path": "$.licenseDeclared" }
+              },
+              "message": "package must have licenseConcluded or licenseDeclared (2026: Component License)"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.downloadLocation" },
+              "message": "package.downloadLocation is required by SPDX 2.3",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "component-integrity",
+      "title": "Component Hash Algorithm and Hash Value",
+      "rules": [
+        {
+          "context": "$.packages[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "count",
+                "path": "$.checksums[*]",
+                "cmp": ">=",
+                "expected": 1
+              },
+              "message": "package must have at least one checksum (2026: Component Hash Algorithm + Value)"
+            }
+          ]
+        },
+        {
+          "context": "$.packages[*].checksums[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.algorithm" },
+              "message": "checksum.algorithm is required (2026: Component Hash Algorithm)"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.checksumValue" },
+              "message": "checksum.checksumValue is required (2026: Component Hash Value)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "component-identifiers",
+      "title": "Component Identifiers",
+      "rules": [
+        {
+          "context": "$.packages[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.externalRefs" },
+              "message": "package must have externalRefs with at least one software identifier (2026: Component Identifiers)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dependency-relationships",
+      "title": "Component Dependency Relationship",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "count",
+                "path": "$.relationships[*]",
+                "cmp": ">=",
+                "expected": 1
+              },
+              "message": "document must have at least one relationship (2026: Component Dependency Relationship)"
+            }
+          ]
+        },
+        {
+          "context": "$.relationships[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.spdxElementId" },
+              "message": "relationship.spdxElementId is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.relationshipType" },
+              "message": "relationship.relationshipType is required"
+            },
+            {
+              "kind": "assert",
+              "test": { "type": "exists", "path": "$.relatedSpdxElement" },
+              "message": "relationship.relatedSpdxElement is required"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "noassertion-filtering",
+      "title": "Discourage NOASSERTION for minimum-element fields",
+      "rules": [
+        {
+          "context": "$.packages[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.supplier" },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "equals",
+                    "path": "$.supplier",
+                    "value": "NOASSERTION"
+                  }
+                }
+              },
+              "message": "package.supplier should not be NOASSERTION (2026: Component Producer)",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.versionInfo" },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "equals",
+                    "path": "$.versionInfo",
+                    "value": "NOASSERTION"
+                  }
+                }
+              },
+              "message": "package.versionInfo should not be NOASSERTION (2026: Component Version)",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "or",
+                "left": { "type": "not_exists", "path": "$.licenseConcluded" },
+                "right": {
+                  "type": "not",
+                  "inner": {
+                    "type": "equals",
+                    "path": "$.licenseConcluded",
+                    "value": "NOASSERTION"
+                  }
+                }
+              },
+              "message": "package.licenseConcluded should not be NOASSERTION (2026: Component License)",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tool-version",
+      "title": "SBOM Tool Version",
+      "rules": [
+        {
+          "context": "$.creationInfo",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.creators[*]",
+                "pattern": "^Tool:.+-.+"
+              },
+              "message": "Tool creator should include a version, e.g. 'Tool: name-1.2.3' (2026: SBOM Tool Version)",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "identifier-format",
+      "title": "Identifier format quality",
+      "rules": [
+        {
+          "context": "$.packages[*]",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "matches",
+                "path": "$.SPDXID",
+                "pattern": "^SPDXRef-[a-zA-Z0-9._/@:-]+$"
+              },
+              "message": "package.SPDXID must match SPDXRef-[idstring] format",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "exists",
+                "path": "$.externalRefs[?@.referenceType == 'purl']"
+              },
+              "message": "package should include a PURL external reference (2026: common software identifier)",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "document-quality",
+      "title": "Document-level quality",
+      "rules": [
+        {
+          "context": "$",
+          "checks": [
+            {
+              "kind": "assert",
+              "test": {
+                "type": "named",
+                "name": "url",
+                "path": "$.documentNamespace"
+              },
+              "message": "documentNamespace must be a valid URI",
+              "severity": "warning"
+            },
+            {
+              "kind": "assert",
+              "test": {
+                "type": "count",
+                "path": "$.packages[*]",
+                "cmp": ">=",
+                "expected": 1
+              },
+              "message": "document should have at least one package",
+              "severity": "warning"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

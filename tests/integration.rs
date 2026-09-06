@@ -1319,18 +1319,18 @@ fn cyclonedx_quality_invalid() {
 }
 
 #[test]
-fn spdx_ntia_valid() {
-    let schema = load_ruleset("spdx-ntia");
-    let doc = scheck::load(&load_testdata("spdx-ntia-valid")).unwrap();
-    let report = scheck::validate_phase(&schema, &doc, "quality");
+fn spdx_cisa_2026_valid() {
+    let schema = load_ruleset("spdx-cisa-2026");
+    let doc = scheck::load(&load_testdata("spdx-cisa-2026-valid")).unwrap();
+    let report = scheck::validate_phase(&schema, &doc, "strict");
     assert!(report.is_ok(), "expected OK, got:\n{}", report.to_text());
 }
 
 #[test]
-fn spdx_ntia_invalid() {
-    let schema = load_ruleset("spdx-ntia");
-    let doc = scheck::load(&load_testdata("spdx-ntia-invalid")).unwrap();
-    let report = scheck::validate_phase(&schema, &doc, "quality");
+fn spdx_cisa_2026_invalid() {
+    let schema = load_ruleset("spdx-cisa-2026");
+    let doc = scheck::load(&load_testdata("spdx-cisa-2026-invalid")).unwrap();
+    let report = scheck::validate_phase(&schema, &doc, "minimum");
     assert!(!report.is_ok());
 }
 

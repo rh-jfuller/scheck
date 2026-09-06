@@ -6,7 +6,7 @@
   "documentNamespace": "https://example.com/my-project-sbom-1.0",
   "creationInfo": {
     "created": "2024-01-15T10:00:00Z",
-    "creators": ["Tool: scheck-test-1.0.0"],
+    "creators": ["Organization: Example Corp", "Tool: scheck-test-1.0.0"],
     "licenseListVersion": "3.22"
   },
   "packages": [

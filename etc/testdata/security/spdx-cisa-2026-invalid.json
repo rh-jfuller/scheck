@@ -11,11 +11,10 @@
   "packages": [
     {
       "SPDXID": "SPDXRef-Pkg",
-      "name": "no-version-or-supplier",
+      "name": "no-hash-no-license-no-id",
       "downloadLocation": "NOASSERTION",
       "supplier": "NOASSERTION",
-      "versionInfo": "NOASSERTION",
-      "licenseConcluded": "NOASSERTION"
+      "versionInfo": "NOASSERTION"
     }
   ]
 }
